@@ -2,8 +2,11 @@
 - [Introduction](#introduction)
 - [2022](#2022)
   - [Stand-alone](#stand-alone)
+    - [Use Case](#use-case)
   - [Header](#header)
   - [Library](#library)
+- [Developer Notes](#developer-notes)
+  - [Testing](#testing)
 - [1989](#1989)
   - [LZSS coding](#lzss-coding)
     - [References](#references)
@@ -11,15 +14,19 @@
 
 # Introduction
 
-2022 Refactoring of the 1989 LZSS.C public domain code written by Haruhiko Okumura
+Lempel–Ziv–Storer–Szymanski (LZSS) is a Dictionary-type lossless data compression algorithm that was created in 1982. For more information, see the [Wikipedia article](https://en.wikipedia.org/wiki/Lempel%E2%80%93Ziv%E2%80%93Storer%E2%80%93Szymanski) on LZSS or the [1989](#1989) section in this `README`.
 
 # 2022
 
-x
+2022 Refactoring of the 1989 LZSS.C public domain code written by Haruhiko Okumura. My goal is to give users a choice of using the code as a stand-alone program, as a header file, or as a library. 
 
 ## Stand-alone
 
-x
+The stand-alone program is a binary executable for compressing and decompressing files from a command-line interface.
+
+### Use Case
+
+Binary packing for a custom game engine. The game engine itself can have the LZSS library statically linked, but at some point during the build process of the engine itself it would be nice to have an executable that can compress and decompress files. This way, each individual asset (eg Bitmap, WAV, MIDI, etc) can be compressed and decompressed at build time. This would allow the game engine to load assets from disk without having to decompress them at runtime, but also add another layer of copy protection to the individual game assets within a larger archive file.
 
 ## Header
 
@@ -29,9 +36,17 @@ x
 
 x
 
+# Developer Notes
+
+x
+
+## Testing
+
+x
+
 # 1989
 
-Only the LZSS information from Haruhiko Okumura's 1989 `COMPRESS.TXT` file has been surfaced here.
+The original code is written in C and is compatible with C89 in the context of Linux. Only the information pertaining to LZSS from Haruhiko Okumura's 1989 `COMPRESS.TXT` file has been surfaced in this `README`.
 
 ## LZSS coding
 
