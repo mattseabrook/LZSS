@@ -26,7 +26,7 @@ The stand-alone program is a binary executable for compressing and decompressing
 
 ### Use Case
 
-Binary packing for a custom game engine. The game engine itself can have the LZSS library statically linked, but at some point during the build process of the engine itself it would be nice to have an executable that can compress and decompress files. This way, each individual asset (eg Bitmap, WAV, MIDI, etc) can be compressed and decompressed at build time. This would allow the game engine to load assets from disk without having to decompress them at runtime, but also add another layer of copy protection to the individual game assets within a larger archive file.
+Binary packing for a custom game engine. The game engine itself can have the LZSS library statically linked, but at some point during the build process of the engine itself it would be nice to have an executable that can compress and decompress files. This way, each individual asset (eg Bitmap, WAV, MIDI, etc) can be compressed at build time. This would allow the game engine to load assets from disk without having to decompress them at runtime, but that is not really a thing to be concerned about in 2022. It's more about adding another layer of "copy protection" to the individual game assets that would be contained within a larger archive file shipped with the final version.
 
 ## Header
 
