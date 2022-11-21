@@ -313,7 +313,58 @@ void Decode(void)
 }
 
 /*
+
+================
+helpText
+
+Prints help text.
+================
+*/
+void helpText(void)
+{
+    std::cout << "Usage: lzss [e|d] infile outfile" << std::endl;
+}
+
+/*
 =============================================================================
                          MAIN ENTRYPOINT
 =============================================================================
 */
+int main(int argc, char *argv[])
+{
+    std::cout << "  _     _________ ____  "
+                 " | |   |__  / ___/ ___| "
+                 " | |     / /\\___ \\___ \\ "
+                 " | |___ / /_ ___) |__) |"
+                 " |_____/____|____/____/ "
+              << std::endl;
+    std::cout << "Lempel-Ziv-Storer-Szymanski (LZSS) compression algorithm" << std::endl;
+    std::cout << "11/21/2022 by Matt Seabrook" << std::endl;
+
+    if (argc != 4)
+    {
+        helpText();
+        return 0;
+    }
+
+    inFile.open(argv[2], std::ios::binary);
+    outFile.open(argv[3], std::ios::binary);
+
+    if (argv[1][0] == 'e')
+    {
+        Encode();
+    }
+    else if (argv[1][0] == 'd')
+    {
+        Decode();
+    }
+    else
+    {
+        helpText();
+    }
+
+    inFile.close();
+    outFile.close();
+
+    return 0;
+}
