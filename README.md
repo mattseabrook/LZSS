@@ -16,13 +16,16 @@
       - [Linux](#linux-1)
       - [Windows](#windows-1)
 - [Developer Notes](#developer-notes)
-  - [Changes](#changes)
   - [Testing](#testing)
   - [Documentation](#documentation)
 - [1989](#1989)
   - [LZSS coding](#lzss-coding)
     - [References](#references)
   - [License](#license)
+- [CHANGELOG](#changelog)
+  - [2022-11-18](#2022-11-18)
+  - [2022-11-21](#2022-11-21)
+- [TODO](#todo)
 
 # Introduction
 
@@ -88,14 +91,6 @@ x
 
 # Developer Notes
 
-## Changes
-
-- Moved from `C89` to `C++17`
-- Changed `define` to `const` where applicable
-- Changed `FILE` to `fstream` where applicable
-- Changed most variable names to camelCase and full english words
-- Replaced the various `printf` calls with a mix of `std::cout`, `std::fixed`, and `std::precision`
-
 ## Testing
 
 x
@@ -145,3 +140,23 @@ draft-proposed ANSI C.  I tested them with Turbo C 2.0.
 ## License
 
 `LZHUF.C` is Copyrighted, the rest is Public Domain.
+
+# CHANGELOG
+
+## 2022-11-18
+
+- Moved from `C89` to `C++17`
+- Changed `define` to `const` where applicable
+- Changed `FILE` to `fstream` where applicable
+- Changed most variable names to camelCase and full english words
+- Replaced the various `printf` calls with a mix of `std::cout`, `std::fixed`, and `std::precision` as needed.
+
+## 2022-11-21
+
+- Added my own style of commenting and layout to the code
+
+# TODO
+
+- Investigate Binary Trees
+- Add a `main` function
+- Once and for all, figure out how to compile a single `*.cpp` file for Windows from the command-line
