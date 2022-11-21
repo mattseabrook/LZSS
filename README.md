@@ -55,7 +55,7 @@ The stand-alone program can be used with `sqlite3`, as an example, to compress s
 
 ```bash
 # Build with clang
-clang -O3 -o lzss lzss.c
+clang++ -O3 -o lzss lzss.cpp
 
 ```
 
