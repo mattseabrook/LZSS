@@ -162,6 +162,9 @@ draft-proposed ANSI C.  I tested them with Turbo C 2.0.
 ## 2022-11-21
 
 - Added my own style of commenting and layout to the code
+- Added the `main` function / Entry Point to the code
+- Added a `helpText` function to display the help text to the command-line
+- Added the ASCII Art logo to the code
 
 # TODO
 
