@@ -6,6 +6,11 @@
       - [Binary packing for a custom game engine](#binary-packing-for-a-custom-game-engine)
   - [Header](#header)
   - [Library](#library)
+    - [Use Case](#use-case-1)
+      - [Static Linking to a Game Engine for Real-Time Decompression](#static-linking-to-a-game-engine-for-real-time-decompression)
+    - [Usage](#usage)
+      - [Linux](#linux)
+      - [Windows](#windows)
 - [Developer Notes](#developer-notes)
   - [Changes](#changes)
   - [Testing](#testing)
@@ -38,6 +43,24 @@ The game engine itself can have the LZSS library statically linked to perform de
 x
 
 ## Library 
+
+x
+
+### Use Case
+
+#### Static Linking to a Game Engine for Real-Time Decompression
+
+A core function of this custom Game Engine would be to decompress assets in real-time. The game engine would have the LZSS library statically linked to it in this case.
+
+### Usage
+
+#### Linux
+
+```bash
+x
+```
+
+#### Windows
 
 x
 

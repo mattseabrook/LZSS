@@ -33,6 +33,8 @@ SOFTWARE.
 #include <string>
 #include <iomanip>
 
+//===========================================================================
+
 const int ringBufferSize = 4096;
 const int maxMatchLength = 18;
 const int threshold = 2;
@@ -48,19 +50,24 @@ int leftChild[ringBufferSize + 1], rightChild[ringBufferSize + 257], parent[ring
 std::ifstream inFile;
 std::ofstream outFile; // input & output files
 
-// Functions
+//===========================================================================
 
+/*
+================
+InitTree
+
+    For i = 0 to N - 1, rson[i] and lson[i] will be the right and
+    left children of node i.  These nodes need not be initialized.
+    Also, dad[i] is the parent of node i.  These are initialized to
+    NIL (= N), which stands for 'not used.'
+    For i = 0 to 255, rson[N + i + 1] is the root of the tree
+    for strings that begin with character i.  These are initialized
+    to NIL.  Note there are 256 trees.
+================
+*/
 void InitTree(void) // initialize trees
 {
     int i;
-
-    // For i = 0 to N - 1, rson[i] and lson[i] will be the right and
-    // left children of node i.  These nodes need not be initialized.
-    // Also, dad[i] is the parent of node i.  These are initialized to
-    // NIL (= N), which stands for 'not used.'
-    // For i = 0 to 255, rson[N + i + 1] is the root of the tree
-    // for strings that begin with character i.  These are initialized
-    // to NIL.  Note there are 256 trees.
 
     for (i = ringBufferSize + 1; i <= ringBufferSize + 256; i++)
         rightChild[i] = nil;
@@ -68,13 +75,19 @@ void InitTree(void) // initialize trees
         parent[i] = nil;
 }
 
+/*
+================
+InsertNode
+
+Inserts string of length F, text_buf[r..r+F-1], into one of the
+trees (text_buf[r]'th tree) and returns the longest-match position
+and length via the global variables match_position and match_length.
+If match_length = F, then removes the old node in favor of the new
+one, because the old one will be deleted sooner.
+Note r plays double role, as tree node and position in buffer.
+================
+*/
 void InsertNode(int r)
-// Inserts string of length F, text_buf[r..r+F-1], into one of the
-// trees (text_buf[r]'th tree) and returns the longest-match position
-// and length via the global variables match_position and match_length.
-// If match_length = F, then removes the old node in favor of the new
-// one, because the old one will be deleted sooner.
-// Note r plays double role, as tree node and position in buffer.
 {
     int i, p, cmp;
     unsigned char *key;
@@ -125,7 +138,14 @@ void InsertNode(int r)
     parent[rightChild[p]] = r;
 }
 
-void DeleteNode(int p) // deletes node p from tree
+/*
+================
+DeleteNode
+
+deletes node p from tree
+================
+*/
+void DeleteNode(int p)
 {
     int q;
 
@@ -160,6 +180,13 @@ void DeleteNode(int p) // deletes node p from tree
     parent[p] = nil;
 }
 
+/*
+================
+Encode
+
+Encodes from input file to output file.
+================
+*/
 void Encode(void)
 {
     int i, c, len, r, s, last_match_length, code_buf_ptr;
@@ -234,6 +261,13 @@ void Encode(void)
     std::cout << "Out/In: " << (double)outFile.tellp() / textsize << std::endl; // printf("Out/In: %.3f\n", (double)outFile.tellp() / textsize);
 }
 
+/*
+================
+Decode
+
+Decodes from input file to output file.
+================
+*/
 void Decode(void)
 {
     int i, j, k, r, c;
@@ -250,7 +284,7 @@ void Decode(void)
             if ((c = inFile.get()) == EOF)
                 break;
             flags = c | 0xff00; // uses higher byte cleverly to count eight
-        }                      //    'flags' is a 16-bit unsigned integer.
+        }                       //    'flags' is a 16-bit unsigned integer.
         if (flags & 1)
         {
             if ((c = inFile.get()) == EOF)
@@ -277,3 +311,9 @@ void Decode(void)
         }
     }
 }
+
+/*
+=============================================================================
+                         MAIN ENTRYPOINT
+=============================================================================
+*/
