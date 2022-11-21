@@ -16,6 +16,7 @@
       - [Linux](#linux-1)
       - [Windows](#windows-1)
 - [Developer Notes](#developer-notes)
+  - [Compiling and working with the old code](#compiling-and-working-with-the-old-code)
   - [Testing](#testing)
   - [Documentation](#documentation)
 - [1989](#1989)
@@ -91,6 +92,13 @@ x
 
 # Developer Notes
 
+## Compiling and working with the old code
+
+```bash
+# Compile the original 1989 LZSS.C code to test against
+clang -O3 -o lzss1989 lzss.c
+```
+
 ## Testing
 
 x
@@ -160,3 +168,4 @@ draft-proposed ANSI C.  I tested them with Turbo C 2.0.
 - Investigate Binary Trees
 - Add a `main` function
 - Once and for all, figure out how to compile a single `*.cpp` file for Windows from the command-line
+- Learn more about `clang`
