@@ -4,24 +4,6 @@
 
 C-ot
 
-int main(int argc, char *argv[])
-{
-    std::string arg1 = argv[1];
-    if (arg1 == "-e")
-    {
-        cout << "Encrypting..." << endl;
-    }
-    else if (arg1 == "-d")
-    {
-        cout << "Decrypting..." << endl;
-    }
-    else
-    {
-        cout << "Error: Invalid argument" << endl;
-    }
-    return 0;
-}
-
 */
 
 #include <iostream>
@@ -39,6 +21,9 @@ unsigned long int printcount = 0;                                               
 unsigned char text_buf[ringBufferSize + maxMatchLength - 1];                                     // ring buffer of size N, with extra F-1 bytes to facilitate string comparison
 int match_position, match_length;                                                                // of longest match.  These are set by the InsertNode() procedure.
 int leftChild[ringBufferSize + 1], rightChild[ringBufferSize + 257], parent[ringBufferSize + 1]; // left & right children & parents -- These constitute binary search trees.
+
+std::ifstream inFile;
+std::ofstream outFile;
 
 // Functions
 
