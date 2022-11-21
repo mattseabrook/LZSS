@@ -4,13 +4,16 @@
   - [Stand-alone](#stand-alone)
     - [Use Case](#use-case)
       - [Binary packing for a custom game engine](#binary-packing-for-a-custom-game-engine)
+    - [Usage](#usage)
+      - [Linux](#linux)
+      - [Windows](#windows)
   - [Header](#header)
   - [Library](#library)
     - [Use Case](#use-case-1)
       - [Static Linking to a Game Engine for Real-Time Decompression](#static-linking-to-a-game-engine-for-real-time-decompression)
-    - [Usage](#usage)
-      - [Linux](#linux)
-      - [Windows](#windows)
+    - [Usage](#usage-1)
+      - [Linux](#linux-1)
+      - [Windows](#windows-1)
 - [Developer Notes](#developer-notes)
   - [Changes](#changes)
   - [Testing](#testing)
@@ -37,6 +40,18 @@ The stand-alone program is a binary executable for compressing and decompressing
 #### Binary packing for a custom game engine 
 
 The game engine itself can have the LZSS library statically linked to perform decompression in real-time, but at some point during the build process of the engine itself there would be a requirement to have an executable that can compress files. This way, each individual asset (eg Bitmap, WAV, MIDI, etc) can be compressed at build time. This would allow the game engine to load assets from disk without having to decompress them at runtime, but that is not really a thing to be concerned about in 2022. It's more about adding another layer of "copy protection" to the individual game assets that would be contained within a larger archive file shipped with the final version.
+
+### Usage
+
+#### Linux
+
+```bash
+x
+```
+
+#### Windows
+
+x
 
 ## Header
 
