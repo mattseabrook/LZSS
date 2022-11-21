@@ -4,6 +4,7 @@
   - [Stand-alone](#stand-alone)
     - [Use Case](#use-case)
       - [Binary packing for a custom game engine](#binary-packing-for-a-custom-game-engine)
+      - [Server-side compression](#server-side-compression)
     - [Usage](#usage)
       - [Linux](#linux)
       - [Windows](#windows)
@@ -40,6 +41,10 @@ The stand-alone program is a binary executable for compressing and decompressing
 #### Binary packing for a custom game engine 
 
 The game engine itself can have the LZSS library statically linked to perform decompression in real-time, but at some point during the build process of the engine itself there would be a requirement to have an executable that can compress files. This way, each individual asset (eg Bitmap, WAV, MIDI, etc) can be compressed at build time. This would allow the game engine to load assets from disk without having to decompress them at runtime, but that is not really a thing to be concerned about in 2022. It's more about adding another layer of "copy protection" to the individual game assets that would be contained within a larger archive file shipped with the final version.
+
+#### Server-side compression
+
+The stand-alone program can be used with `sqlite3`, as an example, to compress some data before storing it in a database, that would be used on the back-end of a web application, etc.
 
 ### Usage
 
