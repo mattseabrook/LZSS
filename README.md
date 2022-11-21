@@ -46,7 +46,9 @@ The game engine itself can have the LZSS library statically linked to perform de
 #### Linux
 
 ```bash
-x
+# Build with clang
+clang -O3 -o lzss lzss.c
+
 ```
 
 #### Windows
