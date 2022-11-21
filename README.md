@@ -9,6 +9,7 @@
 - [Developer Notes](#developer-notes)
   - [Changes](#changes)
   - [Testing](#testing)
+  - [Documentation](#documentation)
 - [1989](#1989)
   - [LZSS coding](#lzss-coding)
     - [References](#references)
@@ -53,6 +54,15 @@ x
 ## Testing
 
 x
+
+## Documentation
+
+Automatically produce flow control diagrams of the *.cpp source files
+
+```bash
+clang -S -emit-llvm -o hello.ll hello.cpp
+opt hello.ll -dot-cfg -o hello.dot
+```
 
 # 1989
 
