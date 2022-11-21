@@ -211,3 +211,47 @@ void Encode(void)
     std::cout << "Out: " << outFile.tellp() << " bytes" << std::endl;           // printf("Out: %ld bytes\n", outFile.tellp());
     std::cout << "Out/In: " << (double)outFile.tellp() / textsize << std::endl; // printf("Out/In: %.3f\n", (double)outFile.tellp() / textsize);
 }
+
+void Decode(void)
+{
+    int i, j, k, r, c;
+    unsigned int flags;
+
+    for (i = 0; i < ringBufferSize - maxMatchLength; i++)
+        text_buf[i] = ' ';
+    r = ringBufferSize - maxMatchLength;
+    flags = 0;
+    for (;;)
+    {
+        if (((flags >>= 1) & 256) == 0)
+        {
+            if ((c = inFile.get()) == EOF)
+                break;
+            flags = c | 0xff00; // uses higher byte cleverly to count eight
+        }                      //    'flags' is a 16-bit unsigned integer.
+        if (flags & 1)
+        {
+            if ((c = inFile.get()) == EOF)
+                break;
+            outFile.put(c);
+            text_buf[r++] = c;
+            r &= (ringBufferSize - 1);
+        }
+        else
+        {
+            if ((i = inFile.get()) == EOF)
+                break;
+            if ((j = inFile.get()) == EOF)
+                break;
+            i |= ((j & 0xf0) << 4);
+            j = (j & 0x0f) + threshold;
+            for (k = 0; k <= j; k++)
+            {
+                c = text_buf[(i + k) & (ringBufferSize - 1)];
+                outFile.put(c);
+                text_buf[r++] = c;
+                r &= (ringBufferSize - 1);
+            }
+        }
+    }
+}
