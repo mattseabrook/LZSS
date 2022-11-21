@@ -3,6 +3,7 @@
 - [2022](#2022)
   - [Stand-alone](#stand-alone)
     - [Use Case](#use-case)
+      - [Binary packing for a custom game engine](#binary-packing-for-a-custom-game-engine)
   - [Header](#header)
   - [Library](#library)
 - [Developer Notes](#developer-notes)
@@ -26,7 +27,9 @@ The stand-alone program is a binary executable for compressing and decompressing
 
 ### Use Case
 
-Binary packing for a custom game engine. The game engine itself can have the LZSS library statically linked to perform decompression in real-time, but at some point during the build process of the engine itself there would be a requirement to have an executable that can compress files. This way, each individual asset (eg Bitmap, WAV, MIDI, etc) can be compressed at build time. This would allow the game engine to load assets from disk without having to decompress them at runtime, but that is not really a thing to be concerned about in 2022. It's more about adding another layer of "copy protection" to the individual game assets that would be contained within a larger archive file shipped with the final version.
+#### Binary packing for a custom game engine 
+
+The game engine itself can have the LZSS library statically linked to perform decompression in real-time, but at some point during the build process of the engine itself there would be a requirement to have an executable that can compress files. This way, each individual asset (eg Bitmap, WAV, MIDI, etc) can be compressed at build time. This would allow the game engine to load assets from disk without having to decompress them at runtime, but that is not really a thing to be concerned about in 2022. It's more about adding another layer of "copy protection" to the individual game assets that would be contained within a larger archive file shipped with the final version.
 
 ## Header
 
