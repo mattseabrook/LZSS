@@ -44,9 +44,11 @@ x
 
 ## Changes
 
+- Moved from `C89` to `C++17`
 - Changed `define` to `const` where applicable
 - Changed `FILE` to `fstream` where applicable
 - Changed most variable names to camelCase and full english words
+- Replaced the various `printf` calls with a mix of `std::cout`, `std::fixed`, and `std::precision`
 
 ## Testing
 

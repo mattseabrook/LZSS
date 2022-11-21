@@ -9,6 +9,7 @@ C-ot
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <iomanip>
 
 const int ringBufferSize = 4096;
 const int maxMatchLength = 18;
@@ -191,7 +192,7 @@ void Encode(void)
         }
         if ((textsize += i) > printcount)
         {
-            printf("%12ld\r", textsize);
+            std::cout << std::fixed << std::setprecision(12) << textsize << std::endl; // printf("%12ld\r", textsize);
             printcount += 1024;
         }
         while (i++ < last_match_length) // After the end of text, no need to read, but buffer may not be empty.
@@ -206,7 +207,7 @@ void Encode(void)
     if (code_buf_ptr > 1) // Send remaining code.
         for (i = 0; i < code_buf_ptr; i++)
             outFile.put(code_buf[i]);
-    printf("In : %ld bytes\n", textsize); // Encoding is done.  Inform user of the size of the text.
-    printf("Out: %ld bytes\n", outFile.tellp());
-    printf("Out/In: %.3f\n", (double)outFile.tellp() / textsize);
+    std::cout << "In : " << textsize << " bytes\n";                             // printf("In : %ld bytes\n", textsize); // Encoding is done.
+    std::cout << "Out: " << outFile.tellp() << " bytes" << std::endl;           // printf("Out: %ld bytes\n", outFile.tellp());
+    std::cout << "Out/In: " << (double)outFile.tellp() / textsize << std::endl; // printf("Out/In: %.3f\n", (double)outFile.tellp() / textsize);
 }
