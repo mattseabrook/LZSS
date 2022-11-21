@@ -23,7 +23,7 @@ int match_position, match_length;                                               
 int leftChild[ringBufferSize + 1], rightChild[ringBufferSize + 257], parent[ringBufferSize + 1]; // left & right children & parents -- These constitute binary search trees.
 
 std::ifstream inFile;
-std::ofstream outFile;                                                                           // input & output files
+std::ofstream outFile; // input & output files
 
 // Functions
 
@@ -135,4 +135,78 @@ void DeleteNode(int p) // deletes node p from tree
     else
         leftChild[parent[p]] = q;
     parent[p] = nil;
+}
+
+void Encode(void)
+{
+    int i, c, len, r, s, last_match_length, code_buf_ptr;
+    unsigned char code_buf[17], mask;
+
+    code_buf[0] = 0;         // code_buf[1..16] saves eight units of code, and
+    code_buf_ptr = mask = 1; // code_buf[0] works as eight flags, "1" representing that the unit is an unencoded letter (1 byte), "0" a position-and-length pair (2 bytes).
+    s = 0;
+    r = ringBufferSize - maxMatchLength;
+    for (i = s; i < r; i++)
+        text_buf[i] = ' '; // Clear the buffer with any character that will appear often.
+    for (len = 0; len < maxMatchLength && (c = inFile.get()) != EOF; len++)
+        text_buf[r + len] = c; // Read F bytes into the last F bytes of the buffer
+    if ((textsize = len) == 0)
+        return; // text of size zero
+    for (i = 1; i <= maxMatchLength; i++)
+        InsertNode(r - i); // Insert the F strings, each of which begins with one or more 'space' characters.  Note the order in which these strings are inserted.  This way,
+    // degenerate trees will be less likely to occur.
+    InsertNode(r); // Finally, insert the whole string just read.  The global variables match_length and match_position are set.
+    do
+    {
+        if (match_length > len)
+            match_length = len; // match_length may be spuriously long near the end of text.
+        if (match_length <= threshold)
+        {
+            match_length = 1;                       // Not long enough match.  Send one byte.
+            code_buf[0] |= mask;                    // 'send one byte' flag
+            code_buf[code_buf_ptr++] = text_buf[r]; // Send uncoded.
+        }
+        else
+        {
+            code_buf[code_buf_ptr++] = (unsigned char)match_position;                                                      // Send position and
+            code_buf[code_buf_ptr++] = (unsigned char)(((match_position >> 4) & 0xf0) | (match_length - (threshold + 1))); // length pair. Note match_length > THRESHOLD.
+        }
+        if ((mask <<= 1) == 0) // Shift mask left one bit.
+        {
+            for (i = 0; i < code_buf_ptr; i++) // Send at most 8 units of code together
+                outFile.put(code_buf[i]);
+            code_buf[0] = 0;
+            code_buf_ptr = mask = 1;
+        }
+        last_match_length = match_length;
+        for (i = 0; i < last_match_length && (c = inFile.get()) != EOF; i++)
+        {
+            DeleteNode(s);   // Delete old strings and
+            text_buf[s] = c; // read new bytes
+            if (s < maxMatchLength - 1)
+                text_buf[s + ringBufferSize] = c; // If the position is near the end of buffer, extend the buffer to make string comparison easier.
+            s = (s + 1) & (ringBufferSize - 1);
+            r = (r + 1) & (ringBufferSize - 1); // Since this is a ring buffer, increment the position modulo the buffer size.
+            InsertNode(r);                      // Register the string in text_buf[r..r+F-1]
+        }
+        if ((textsize += i) > printcount)
+        {
+            printf("%12ld\r", textsize);
+            printcount += 1024;
+        }
+        while (i++ < last_match_length) // After the end of text, no need to read, but buffer may not be empty.
+        {
+            DeleteNode(s); // Delete old strings
+            s = (s + 1) & (ringBufferSize - 1);
+            r = (r + 1) & (ringBufferSize - 1);
+            if (--len)
+                InsertNode(r); // If the position is near the end of buffer, extend the buffer to make string comparison easier.
+        }
+    } while (len > 0);    // until length of string to be processed is zero
+    if (code_buf_ptr > 1) // Send remaining code.
+        for (i = 0; i < code_buf_ptr; i++)
+            outFile.put(code_buf[i]);
+    printf("In : %ld bytes\n", textsize); // Encoding is done.  Inform user of the size of the text.
+    printf("Out: %ld bytes\n", outFile.tellp());
+    printf("Out/In: %.3f\n", (double)outFile.tellp() / textsize);
 }
