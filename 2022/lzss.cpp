@@ -23,7 +23,7 @@ int match_position, match_length;                                               
 int leftChild[ringBufferSize + 1], rightChild[ringBufferSize + 257], parent[ringBufferSize + 1]; // left & right children & parents -- These constitute binary search trees.
 
 std::ifstream inFile;
-std::ofstream outFile;
+std::ofstream outFile;                                                                           // input & output files
 
 // Functions
 

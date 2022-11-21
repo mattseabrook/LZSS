@@ -7,6 +7,7 @@
   - [Header](#header)
   - [Library](#library)
 - [Developer Notes](#developer-notes)
+  - [Changes](#changes)
   - [Testing](#testing)
 - [1989](#1989)
   - [LZSS coding](#lzss-coding)
@@ -41,7 +42,11 @@ x
 
 # Developer Notes
 
-x
+## Changes
+
+- Changed `define` to `const` where applicable
+- Changed `FILE` to `fstream` where applicable
+- Changed most variable names to camelCase and full english words
 
 ## Testing
 
