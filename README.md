@@ -24,8 +24,8 @@
     - [References](#references)
   - [License](#license)
 - [CHANGELOG](#changelog)
-  - [2022-11-18](#2022-11-18)
   - [2022-11-21](#2022-11-21)
+  - [2022-11-18](#2022-11-18)
 - [TODO](#todo)
 
 # Introduction
@@ -151,6 +151,14 @@ draft-proposed ANSI C.  I tested them with Turbo C 2.0.
 
 # CHANGELOG
 
+## 2022-11-21
+
+- Added my own style of commenting and layout to the code
+- Added the `main` function / Entry Point to the code
+- Added a `helpText` function to display the help text to the command-line
+- Added the ASCII Art logo to the code
+- Added error checking in the `main` function for the input and output files for the Stand-alone solution.
+
 ## 2022-11-18
 
 - Moved from `C89` to `C++17`
@@ -159,17 +167,8 @@ draft-proposed ANSI C.  I tested them with Turbo C 2.0.
 - Changed most variable names to camelCase and full english words
 - Replaced the various `printf` calls with a mix of `std::cout`, `std::fixed`, and `std::precision` as needed.
 
-## 2022-11-21
-
-- Added my own style of commenting and layout to the code
-- Added the `main` function / Entry Point to the code
-- Added a `helpText` function to display the help text to the command-line
-- Added the ASCII Art logo to the code
-
 # TODO
 
-- Investigate Binary Trees
-- Add a `main` function
-- Once and for all, figure out how to compile a single `*.cpp` file for Windows from the command-line
-- Learn more about `clang`
-- Error checking for `inFile` and `outFile` in `main`
+- Test Windows compile
+- After testing see if `nil` can be removed from the 2022 code
+- Remove all of the documentation from the 2022 code and put it in the `README`
