@@ -58,6 +58,24 @@ The stand-alone program can be used with `sqlite3`, as an example, to compress s
 # Build with clang
 clang++ -O3 -o lzss lzss.cpp
 
+# First time run
+./lzss2022
+```
+
+Output:
+
+```text
+  _     _________ ____
+ | |   |__  / ___/ ___|
+ | |     / /\___ \___ \
+ | |___ / /_ ___) |__) |
+ |_____/____|____/____/
+
+Lempel-Ziv-Storer-Szymanski (LZSS) compression algorithm
+11/21/2022 by Matt Seabrook
+
+        Usage: lzss [-e|-d] infile outfile
+        
 ```
 
 #### Windows
@@ -97,25 +115,6 @@ x
 ```bash
 # Compile the original 1989 LZSS.C code to test against
 clang -O3 -o lzss1989 lzss.c
-
-# First time run
-./lzss2022
-```
-
-Output:
-
-```text
-  _     _________ ____
- | |   |__  / ___/ ___|
- | |     / /\___ \___ \
- | |___ / /_ ___) |__) |
- |_____/____|____/____/
-
-Lempel-Ziv-Storer-Szymanski (LZSS) compression algorithm
-11/21/2022 by Matt Seabrook
-
-        Usage: lzss [-e|-d] infile outfile
-        
 ```
 
 ## Testing
