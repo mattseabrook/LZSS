@@ -350,7 +350,17 @@ int main(int argc, char *argv[])
     }
 
     inFile.open(argv[2], std::ios::binary);
+    if (!inFile.is_open())
+    {
+        std::cout << "Error: Could not open input file " << argv[2] << std::endl;
+        return 0;
+    }
     outFile.open(argv[3], std::ios::binary);
+    if (!outFile.is_open())
+    {
+        std::cout << "Error: Could not create output file " << argv[3] << std::endl;
+        return 0;
+    }
 
     if (std::string(argv[1]) == "-e")
     {
