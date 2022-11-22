@@ -11,7 +11,7 @@
   - [Header](#header)
   - [Library](#library)
     - [Use Case](#use-case-1)
-      - [Static Linking to a Game Engine for Real-Time Decompression](#static-linking-to-a-game-engine-for-real-time-decompression)
+      - [Static Linking to a custom Game Engine or Tool](#static-linking-to-a-custom-game-engine-or-tool)
     - [Usage](#usage-1)
       - [Linux](#linux-1)
       - [Windows](#windows-1)
@@ -92,7 +92,7 @@ x
 
 ### Use Case
 
-#### Static Linking to a Game Engine for Real-Time Decompression
+#### Static Linking to a custom Game Engine or Tool
 
 A core function of this custom Game Engine would be to decompress assets in real-time. The game engine would have the LZSS library statically linked to it in this case.
 
