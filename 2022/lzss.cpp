@@ -35,17 +35,17 @@ SOFTWARE.
 
 //===========================================================================
 
-const int ringBufferSize = 4096;
+const int historyBufferSize = 4096;
 const int maxMatchLength = 18;
 const int threshold = 2;
-const int nil = ringBufferSize;
+const int nil = historyBufferSize;
 
-unsigned long int textsize = 0;                                                                  // text size counter
-unsigned long int codesize = 0;                                                                  // code size counter
-unsigned long int printcount = 0;                                                                // counter for reporting progress every 1K bytes
-unsigned char text_buf[ringBufferSize + maxMatchLength - 1];                                     // ring buffer of size N, with extra F-1 bytes to facilitate string comparison
-int match_position, match_length;                                                                // of longest match.  These are set by the InsertNode() procedure.
-int leftChild[ringBufferSize + 1], rightChild[ringBufferSize + 257], parent[ringBufferSize + 1]; // left & right children & parents -- These constitute binary search trees.
+unsigned long int textsize = 0;                                                                           // text size counter
+unsigned long int codesize = 0;                                                                           // code size counter
+unsigned long int printcount = 0;                                                                         // counter for reporting progress every 1K bytes
+unsigned char text_buf[historyBufferSize + maxMatchLength - 1];                                           // ring buffer of size N, with extra F-1 bytes to facilitate string comparison
+int match_position, match_length;                                                                         // of longest match.  These are set by the InsertNode() procedure.
+int leftChild[historyBufferSize + 1], rightChild[historyBufferSize + 257], parent[historyBufferSize + 1]; // left & right children & parents -- These constitute binary search trees.
 
 std::ifstream inFile;
 std::ofstream outFile; // input & output files
@@ -69,9 +69,9 @@ void InitTree(void) // initialize trees
 {
     int i;
 
-    for (i = ringBufferSize + 1; i <= ringBufferSize + 256; i++)
+    for (i = historyBufferSize + 1; i <= historyBufferSize + 256; i++)
         rightChild[i] = nil;
-    for (i = 0; i < ringBufferSize; i++)
+    for (i = 0; i < historyBufferSize; i++)
         parent[i] = nil;
 }
 
@@ -94,7 +94,7 @@ void InsertNode(int r)
 
     cmp = 1;
     key = &text_buf[r];
-    p = ringBufferSize + 1 + key[0];
+    p = historyBufferSize + 1 + key[0];
     rightChild[r] = leftChild[r] = nil;
     match_length = 0;
     for (;;)
@@ -195,7 +195,7 @@ void Encode(void)
     code_buf[0] = 0;         // code_buf[1..16] saves eight units of code, and
     code_buf_ptr = mask = 1; // code_buf[0] works as eight flags, "1" representing that the unit is an unencoded letter (1 byte), "0" a position-and-length pair (2 bytes).
     s = 0;
-    r = ringBufferSize - maxMatchLength;
+    r = historyBufferSize - maxMatchLength;
     for (i = s; i < r; i++)
         text_buf[i] = ' '; // Clear the buffer with any character that will appear often.
     for (len = 0; len < maxMatchLength && (c = inFile.get()) != EOF; len++)
@@ -234,10 +234,10 @@ void Encode(void)
             DeleteNode(s);   // Delete old strings and
             text_buf[s] = c; // read new bytes
             if (s < maxMatchLength - 1)
-                text_buf[s + ringBufferSize] = c; // If the position is near the end of buffer, extend the buffer to make string comparison easier.
-            s = (s + 1) & (ringBufferSize - 1);
-            r = (r + 1) & (ringBufferSize - 1); // Since this is a ring buffer, increment the position modulo the buffer size.
-            InsertNode(r);                      // Register the string in text_buf[r..r+F-1]
+                text_buf[s + historyBufferSize] = c; // If the position is near the end of buffer, extend the buffer to make string comparison easier.
+            s = (s + 1) & (historyBufferSize - 1);
+            r = (r + 1) & (historyBufferSize - 1); // Since this is a ring buffer, increment the position modulo the buffer size.
+            InsertNode(r);                         // Register the string in text_buf[r..r+F-1]
         }
         if ((textsize += i) > printcount)
         {
@@ -247,8 +247,8 @@ void Encode(void)
         while (i++ < last_match_length) // After the end of text, no need to read, but buffer may not be empty.
         {
             DeleteNode(s); // Delete old strings
-            s = (s + 1) & (ringBufferSize - 1);
-            r = (r + 1) & (ringBufferSize - 1);
+            s = (s + 1) & (historyBufferSize - 1);
+            r = (r + 1) & (historyBufferSize - 1);
             if (--len)
                 InsertNode(r); // If the position is near the end of buffer, extend the buffer to make string comparison easier.
         }
@@ -273,9 +273,9 @@ void Decode(void)
     int i, j, k, r, c;
     unsigned int flags;
 
-    for (i = 0; i < ringBufferSize - maxMatchLength; i++)
+    for (i = 0; i < historyBufferSize - maxMatchLength; i++)
         text_buf[i] = ' ';
-    r = ringBufferSize - maxMatchLength;
+    r = historyBufferSize - maxMatchLength;
     flags = 0;
     for (;;)
     {
@@ -291,7 +291,7 @@ void Decode(void)
                 break;
             outFile.put(c);
             text_buf[r++] = c;
-            r &= (ringBufferSize - 1);
+            r &= (historyBufferSize - 1);
         }
         else
         {
@@ -303,10 +303,10 @@ void Decode(void)
             j = (j & 0x0f) + threshold;
             for (k = 0; k <= j; k++)
             {
-                c = text_buf[(i + k) & (ringBufferSize - 1)];
+                c = text_buf[(i + k) & (historyBufferSize - 1)];
                 outFile.put(c);
                 text_buf[r++] = c;
-                r &= (ringBufferSize - 1);
+                r &= (historyBufferSize - 1);
             }
         }
     }
