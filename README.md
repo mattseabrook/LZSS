@@ -16,7 +16,6 @@
       - [Linux](#linux-1)
       - [Windows](#windows-1)
 - [Developer Notes](#developer-notes)
-  - [Compiling and working with the old code](#compiling-and-working-with-the-old-code)
   - [Testing](#testing)
   - [References](#references)
   - [Documentation](#documentation)
@@ -110,8 +109,6 @@ x
 x
 
 # Developer Notes
-
-## Compiling and working with the old code
 
 There were no issues compiling the original LZSS.C code with `clang` on Linux.
 
