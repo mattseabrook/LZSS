@@ -322,7 +322,8 @@ Prints help text.
 */
 void helpText(void)
 {
-    std::cout << "Usage: lzss [e|d] infile outfile" << std::endl;
+    std::cout << "\tUsage: lzss [-e|-d] infile outfile\n"
+              << std::endl;
 }
 
 /*
@@ -332,14 +333,15 @@ void helpText(void)
 */
 int main(int argc, char *argv[])
 {
-    std::cout << "  _     _________ ____  "
-                 " | |   |__  / ___/ ___| "
-                 " | |     / /\\___ \\___ \\ "
-                 " | |___ / /_ ___) |__) |"
-                 " |_____/____|____/____/ "
+    std::cout << "  _     _________ ____  \n"
+                 " | |   |__  / ___/ ___| \n"
+                 " | |     / /\\___ \\___ \\ \n"
+                 " | |___ / /_ ___) |__) |\n"
+                 " |_____/____|____/____/ \n"
               << std::endl;
     std::cout << "Lempel-Ziv-Storer-Szymanski (LZSS) compression algorithm" << std::endl;
-    std::cout << "11/21/2022 by Matt Seabrook" << std::endl;
+    std::cout << "11/21/2022 by Matt Seabrook\n"
+              << std::endl;
 
     if (argc != 4)
     {
@@ -350,17 +352,18 @@ int main(int argc, char *argv[])
     inFile.open(argv[2], std::ios::binary);
     outFile.open(argv[3], std::ios::binary);
 
-    if (argv[1][0] == 'e')
+    if (std::string(argv[1]) == "-e")
     {
         Encode();
     }
-    else if (argv[1][0] == 'd')
+    else if (std::string(argv[1]) == "-d")
     {
         Decode();
     }
     else
     {
         helpText();
+        return 0;
     }
 
     inFile.close();
