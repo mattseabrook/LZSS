@@ -172,4 +172,4 @@ draft-proposed ANSI C.  I tested them with Turbo C 2.0.
 - Add a `main` function
 - Once and for all, figure out how to compile a single `*.cpp` file for Windows from the command-line
 - Learn more about `clang`
-- Might have to clean up ASCII Logo with `\n`
+- Error checking for `inFile` and `outFile` in `main`
