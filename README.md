@@ -18,10 +18,11 @@
 - [Developer Notes](#developer-notes)
   - [Compiling and working with the old code](#compiling-and-working-with-the-old-code)
   - [Testing](#testing)
+  - [References](#references)
   - [Documentation](#documentation)
 - [1989](#1989)
   - [LZSS coding](#lzss-coding)
-    - [References](#references)
+    - [References](#references-1)
   - [License](#license)
 - [CHANGELOG](#changelog)
   - [2022-11-21](#2022-11-21)
@@ -112,6 +113,8 @@ x
 
 ## Compiling and working with the old code
 
+There were no issues compiling the original LZSS.C code with `clang` on Linux.
+
 ```bash
 # Compile the original 1989 LZSS.C code to test against
 clang -O3 -o lzss1989 lzss.c
@@ -121,6 +124,10 @@ clang -O3 -o lzss1989 lzss.c
 
 x
 
+## References
+
+- XenTaX
+  
 ## Documentation
 
 Automatically produce flow control diagrams of the *.cpp source files
