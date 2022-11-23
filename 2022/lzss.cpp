@@ -121,14 +121,21 @@ void InsertNode(int r)
                 return;
             }
         }
+
         for (i = 1; i < maxMatchLength; i++)
+        {
             if ((cmp = key[i] - text_buf[p + i]) != 0)
+            {
                 break;
+            }
+        }
         if (i > match_length)
         {
             match_position = p;
             if ((match_length = i) >= maxMatchLength)
+            {
                 break;
+            }
         }
     }
     parent[r] = parent[p];
@@ -136,6 +143,11 @@ void InsertNode(int r)
     rightChild[r] = rightChild[p];
     parent[leftChild[p]] = r;
     parent[rightChild[p]] = r;
+    if (rightChild[parent[p]] == p)
+        rightChild[parent[p]] = r;
+    else
+        leftChild[parent[p]] = r;
+    parent[p] = nil; // remove p
 }
 
 /*
@@ -196,16 +208,23 @@ void Encode(void)
     code_buf_ptr = mask = 1; // code_buf[0] works as eight flags, "1" representing that the unit is an unencoded letter (1 byte), "0" a position-and-length pair (2 bytes).
     s = 0;
     r = historyBufferSize - maxMatchLength;
+
     for (i = s; i < r; i++)
         text_buf[i] = ' '; // Clear the buffer with any character that will appear often.
+
     for (len = 0; len < maxMatchLength && (c = inFile.get()) != EOF; len++)
         text_buf[r + len] = c; // Read F bytes into the last F bytes of the buffer
+
     if ((textsize = len) == 0)
         return; // text of size zero
+
     for (i = 1; i <= maxMatchLength; i++)
-        InsertNode(r - i); // Insert the F strings, each of which begins with one or more 'space' characters.  Note the order in which these strings are inserted.  This way,
-    // degenerate trees will be less likely to occur.
+    {
+        InsertNode(r - i);
+    }
+
     InsertNode(r); // Finally, insert the whole string just read.  The global variables match_length and match_position are set.
+
     do
     {
         if (match_length > len)
@@ -241,7 +260,8 @@ void Encode(void)
         }
         if ((textsize += i) > printcount)
         {
-            std::cout << std::fixed << std::setprecision(12) << textsize << std::endl; // printf("%12ld\r", textsize);
+            // std::cout << std::fixed << std::setprecision(12) << textsize << std::endl;
+            printf("%12ld\r", textsize);
             printcount += 1024;
         }
         while (i++ < last_match_length) // After the end of text, no need to read, but buffer may not be empty.
@@ -252,13 +272,17 @@ void Encode(void)
             if (--len)
                 InsertNode(r); // If the position is near the end of buffer, extend the buffer to make string comparison easier.
         }
-    } while (len > 0);    // until length of string to be processed is zero
+    } while (len > 0); // until length of string to be processed is zero
+
     if (code_buf_ptr > 1) // Send remaining code.
         for (i = 0; i < code_buf_ptr; i++)
             outFile.put(code_buf[i]);
-    std::cout << "In : " << textsize << " bytes\n";                             // printf("In : %ld bytes\n", textsize); // Encoding is done.
-    std::cout << "Out: " << outFile.tellp() << " bytes" << std::endl;           // printf("Out: %ld bytes\n", outFile.tellp());
-    std::cout << "Out/In: " << (double)outFile.tellp() / textsize << std::endl; // printf("Out/In: %.3f\n", (double)outFile.tellp() / textsize);
+    // std::cout << "In : " << textsize << " bytes\n";
+    printf("In : %ld bytes\n", textsize); // Encoding is done.
+    // std::cout << "Out: " << outFile.tellp() << " bytes" << std::endl;
+    printf("Out: %ld bytes\n", outFile.tellp());
+    // std::cout << "Out/In: " << (double)outFile.tellp() / textsize << std::endl;
+    printf("Out/In: %.3f\n", (double)outFile.tellp() / textsize);
 }
 
 /*

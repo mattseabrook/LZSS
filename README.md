@@ -194,3 +194,4 @@ draft-proposed ANSI C.  I tested them with Turbo C 2.0.
 - Test Windows compile
 - After testing see if `nil` can be removed from the 2022 code
 - Remove all of the documentation from the 2022 code and put it in the `README`
+- Expose `N`, `F`, `THRESHOLD`, and possibly others. This will be different for the Stand-alone, Header, and Library solutions.
