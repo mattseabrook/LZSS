@@ -123,7 +123,7 @@ x
 
 ## References
 
-  [7th Guest VDX](http://wiki.xentax.com/index.php/The_7th_Guest_VDX)
+- [7th Guest VDX](http://wiki.xentax.com/index.php/The_7th_Guest_VDX)
 - [Retro Modding Wiki: LZSS Compression](https://wiki.axiodl.com/w/LZSS_Compression)
   
 ## Documentation
