@@ -16,8 +16,8 @@
       - [Linux](#linux-1)
       - [Windows](#windows-1)
 - [Developer Notes](#developer-notes)
+  - [Debugging](#debugging)
   - [Testing](#testing)
-    - [Debugging](#debugging)
     - [Inspecting the generated LZS files](#inspecting-the-generated-lzs-files)
   - [References](#references)
   - [Documentation](#documentation)
@@ -122,9 +122,7 @@ clang -O3 -o lzss1989 lzss.c
 clang++ -O3 -o lzss2022 lzss.cpp
 ```
 
-## Testing
-
-### Debugging
+## Debugging
 
 Using `lldb` to debug these processes.
 
@@ -135,6 +133,18 @@ clang++ -g -O3 -o lzss lzss.cpp
 # For the original C version as well
 clang -g -O3 -o lzss lzss.c
 ```
+
+## Testing
+
+- The file used for testing was a lossless 2K image. This exact file: [https://filesamples.com/samples/image/ppm/sample_1920%C3%971280.ppm](https://filesamples.com/samples/image/ppm/sample_1920%C3%971280.ppm)
+- Make a copy of `LZSS.C` so that you can modify `N`, `F`, and `THRESHOLD` to match the values in your new C++ version.
+
+```bash
+# file analysis of sample.ppm
+file sample.ppm
+```
+
+The output should exactly match: `sample.ppm: Netpbm image data, size = 1920 x 1280, rawbits, pixmap`
 
 ### Inspecting the generated LZS files
 
