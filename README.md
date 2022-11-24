@@ -139,18 +139,14 @@ clang -g -O3 -o lzss lzss.c
 - The file used for testing was a lossless 2K image. This exact file: [https://filesamples.com/samples/image/ppm/sample_1920%C3%971280.ppm](https://filesamples.com/samples/image/ppm/sample_1920%C3%971280.ppm)
 - Make a copy of `LZSS.C` so that you can modify `N`, `F`, and `THRESHOLD` to match the values in your new C++ version.
 
+### Inspecting the generated LZS files
+
 ```bash
 # file analysis of sample.ppm
 file sample.ppm
 ```
 
 The output should exactly match: `sample.ppm: Netpbm image data, size = 1920 x 1280, rawbits, pixmap`
-
-### Inspecting the generated LZS files
-
-```bash
-x
-```
 
 ## References
 
