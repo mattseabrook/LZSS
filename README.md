@@ -204,7 +204,7 @@ draft-proposed ANSI C.  I tested them with Turbo C 2.0.
 
 ## 2022-11-24
 
-- Used `lldb` to figure out why the new C++ version couldn't break out of the `for(;;)` loop in `InsertNode`. Turns out that `r` value was one byte larger than the `C89` version in a side-by-side comparison.
+- Used `lldb` to figure out why the new C++ version couldn't break out of the `for(;;)` loop in `InsertNode`. Turns out that the `r` value was one byte larger than the `C89` version in a side-by-side comparison.
 - Somehow, even using co-pilot it missed the `InitTree` call inside the `Encode` function. This was causing the `r` value to be off by one byte.
 - Documentation updates.
 
