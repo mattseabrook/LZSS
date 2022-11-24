@@ -204,6 +204,8 @@ void Encode(void)
     int i, c, len, r, s, last_match_length, code_buf_ptr;
     unsigned char code_buf[17], mask;
 
+    InitTree(); // initialize trees
+
     code_buf[0] = 0;         // code_buf[1..16] saves eight units of code, and
     code_buf_ptr = mask = 1; // code_buf[0] works as eight flags, "1" representing that the unit is an unencoded letter (1 byte), "0" a position-and-length pair (2 bytes).
     s = 0;
