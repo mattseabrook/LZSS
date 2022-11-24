@@ -26,6 +26,7 @@
     - [References](#references-1)
   - [License](#license)
 - [CHANGELOG](#changelog)
+  - [2022-11-24](#2022-11-24)
   - [2022-11-21](#2022-11-21)
   - [2022-11-18](#2022-11-18)
 - [TODO](#todo)
@@ -200,6 +201,12 @@ draft-proposed ANSI C.  I tested them with Turbo C 2.0.
 `LZHUF.C` is Copyrighted, the rest is Public Domain.
 
 # CHANGELOG
+
+## 2022-11-24
+
+- Used `lldb` to figure out why the new C++ version couldn't break out of the `for(;;)` loop in `InsertNode`. Turns out that `r` value was one byte larger than the `C89` version in a side-by-side comparison.
+- Somehow, even using co-pilot it missed the `InitTree` call inside the `Encode` function. This was causing the `r` value to be off by one byte.
+- Documentation updates.
 
 ## 2022-11-21
 
