@@ -17,6 +17,8 @@
       - [Windows](#windows-1)
 - [Developer Notes](#developer-notes)
   - [Testing](#testing)
+    - [Debugging](#debugging)
+    - [Inspecting the generated LZS files](#inspecting-the-generated-lzs-files)
   - [References](#references)
   - [Documentation](#documentation)
 - [1989](#1989)
@@ -115,11 +117,30 @@ There were no issues compiling the original LZSS.C code with `clang` on Linux.
 ```bash
 # Compile the original 1989 LZSS.C code to test against
 clang -O3 -o lzss1989 lzss.c
+
+# Compile the new 2022 C++ code
+clang++ -O3 -o lzss2022 lzss.cpp
 ```
 
 ## Testing
 
+### Debugging
+
+Using `lldb` to debug these processes.
+
+```bash
+# Compile enabled for lldb
+clang++ -g -O3 -o lzss lzss.cpp
+
+# For the original C version as well
+clang -g -O3 -o lzss lzss.c
+```
+
+### Inspecting the generated LZS files
+
+```bash
 x
+```
 
 ## References
 
