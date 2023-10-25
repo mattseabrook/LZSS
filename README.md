@@ -1,146 +1,86 @@
 **Table-of-Contents**
 - [Introduction](#introduction)
-- [2022](#2022)
-  - [Stand-alone](#stand-alone)
-    - [Use Case](#use-case)
-      - [Binary packing for a custom game engine](#binary-packing-for-a-custom-game-engine)
-      - [Server-side compression](#server-side-compression)
-    - [Usage](#usage)
-      - [Linux](#linux)
-      - [Windows](#windows)
-  - [Header](#header)
-  - [Library](#library)
-    - [Use Case](#use-case-1)
-      - [Static Linking to a custom Game Engine or Tool](#static-linking-to-a-custom-game-engine-or-tool)
-    - [Usage](#usage-1)
-      - [Linux](#linux-1)
-      - [Windows](#windows-1)
-- [Developer Notes](#developer-notes)
-  - [Debugging](#debugging)
-  - [Testing](#testing)
-    - [Inspecting the generated LZS files](#inspecting-the-generated-lzs-files)
+- [2023](#2023)
+- [Header-only implementation](#header-only-implementation)
+- [Use Case](#use-case)
+  - [Binary packing for a custom game engine](#binary-packing-for-a-custom-game-engine)
+  - [Server-side compression](#server-side-compression)
+- [Build](#build)
+  - [Linux](#linux)
+  - [Windows](#windows)
+- [Usage](#usage)
+  - [Linux](#linux-1)
+  - [Windows](#windows-1)
+- [Developers](#developers)
+  - [Inspecting the generated LZS files](#inspecting-the-generated-lzs-files)
   - [References](#references)
-  - [Documentation](#documentation)
 - [1989](#1989)
   - [LZSS coding](#lzss-coding)
     - [References](#references-1)
   - [License](#license)
 - [CHANGELOG](#changelog)
+  - [2023-10-24](#2023-10-24)
   - [2022-11-24](#2022-11-24)
   - [2022-11-21](#2022-11-21)
   - [2022-11-18](#2022-11-18)
 - [TODO](#todo)
+- [Notes](#notes)
+  - [Encode](#encode)
 
 # Introduction
 
 Lempel–Ziv–Storer–Szymanski (LZSS) is a Dictionary-type lossless data compression algorithm that was created in 1982. For more information, see the [Wikipedia article](https://en.wikipedia.org/wiki/Lempel%E2%80%93Ziv%E2%80%93Storer%E2%80%93Szymanski) on LZSS or the [1989](#1989) section in this `README`.
 
-# 2022
+# 2023
 
-2022 Refactoring of the 1989 LZSS.C public domain code written by Haruhiko Okumura. My goal is to give users a choice of using the code as a stand-alone program, as a header file, or as a library. 
+2023 Refactoring of the 1989 LZSS.C public domain code written by Haruhiko Okumura. My goal is to give users a choice of using the code as a stand-alone program, as a header file, or as a library. 
 
-## Stand-alone
+# Header-only implementation
 
-The stand-alone program is a binary executable for compressing and decompressing files from a command-line interface.
+`lzss.hpp`
 
-### Use Case
+# Use Case
 
-#### Binary packing for a custom game engine 
+## Binary packing for a custom game engine 
 
 The game engine itself can have the LZSS library statically linked to perform decompression in real-time, but at some point during the build process of the engine itself there would be a requirement to have an executable that can compress files. This way, each individual asset (eg Bitmap, WAV, MIDI, etc) can be compressed at build time. This would allow the game engine to load assets from disk without having to decompress them at runtime, but that is not really a thing to be concerned about in 2022. It's more about adding another layer of "copy protection" to the individual game assets that would be contained within a larger archive file shipped with the final version.
 
-#### Server-side compression
+## Server-side compression
 
 The stand-alone program can be used with `sqlite3`, as an example, to compress some data before storing it in a database, that would be used on the back-end of a web application, etc.
 
-### Usage
+# Build
 
-#### Linux
+## Linux
 
 ```bash
-# Build with clang
-clang++ -O3 -o lzss lzss.cpp
+# Build with g++
+make
 
 # First time run
-./lzss2022
+./lzss
 ```
 
-Output:
-
-```text
-  _     _________ ____
- | |   |__  / ___/ ___|
- | |     / /\___ \___ \
- | |___ / /_ ___) |__) |
- |_____/____|____/____/
-
-Lempel-Ziv-Storer-Szymanski (LZSS) compression algorithm
-11/21/2022 by Matt Seabrook
-
-        Usage: lzss [-e|-d] infile outfile
-        
-```
-
-#### Windows
+## Windows
 
 x
 
-## Header
 
-x
+# Usage
 
-## Library 
-
-x
-
-### Use Case
-
-#### Static Linking to a custom Game Engine or Tool
-
-A core function of this custom Game Engine would be to decompress assets in real-time. The game engine would have the LZSS library statically linked to it in this case.
-
-### Usage
-
-#### Linux
+## Linux
 
 ```bash
 x
 ```
 
-#### Windows
+## Windows
 
 x
 
-# Developer Notes
+# Developers
 
-There were no issues compiling the original LZSS.C code with `clang` on Linux.
-
-```bash
-# Compile the original 1989 LZSS.C code to test against
-clang -O3 -o lzss1989 lzss.c
-
-# Compile the new 2022 C++ code
-clang++ -O3 -o lzss2022 lzss.cpp
-```
-
-## Debugging
-
-Using `lldb` to debug these processes.
-
-```bash
-# Compile enabled for lldb
-clang++ -g -O3 -o lzss lzss.cpp
-
-# For the original C version as well
-clang -g -O3 -o lzss lzss.c
-```
-
-## Testing
-
-- The file used for testing was a lossless 2K image. This exact file: [https://filesamples.com/samples/image/ppm/sample_1920%C3%971280.ppm](https://filesamples.com/samples/image/ppm/sample_1920%C3%971280.ppm)
-- Make a copy of `LZSS.C` so that you can modify `N`, `F`, and `THRESHOLD` to match the values in your new C++ version.
-
-### Inspecting the generated LZS files
+## Inspecting the generated LZS files
 
 ```bash
 # file analysis of sample.ppm
@@ -155,15 +95,6 @@ The output should exactly match: `sample.ppm: Netpbm image data, size = 1920 x 1
 - [Retro Modding Wiki: LZSS Compression](https://wiki.axiodl.com/w/LZSS_Compression)
 - [XeNTaX: LZSS](http://wiki.xentax.com/index.php/LZSS)
   
-## Documentation
-
-Automatically produce flow control diagrams of the *.cpp source files
-
-```bash
-clang -S -emit-llvm -o hello.ll hello.cpp
-opt hello.ll -dot-cfg -o hello.dot
-```
-
 # 1989
 
 The original code is written in C and is compatible with C89 in the context of Linux. Only the information pertaining to LZSS from Haruhiko Okumura's 1989 `COMPRESS.TXT` file has been surfaced in this `README`.
@@ -203,6 +134,10 @@ draft-proposed ANSI C.  I tested them with Turbo C 2.0.
 
 # CHANGELOG
 
+## 2023-10-24
+
+x
+
 ## 2022-11-24
 
 - Used `lldb` to figure out why the new C++ version couldn't break out of the `for(;;)` loop in `InsertNode`. Turns out that the `r` value was one byte larger than the `C89` version in a side-by-side comparison.
@@ -231,3 +166,9 @@ draft-proposed ANSI C.  I tested them with Turbo C 2.0.
 - After testing see if `nil` can be removed from the 2022 code
 - Remove all of the documentation from the 2022 code and put it in the `README`
 - Expose `N`, `F`, `THRESHOLD`, and possibly others. This will be different for the Stand-alone, Header, and Library solutions.
+
+# Notes
+
+## Encode
+
+- The original algorithm employs a complex scheme of storing the position and length. We're simplifying it by directly storing these values into the buffer. This may need further adjustments based on the decoding scheme.
