@@ -1,6 +1,6 @@
 **Table-of-Contents**
 - [Introduction](#introduction)
-- [2023](#2023)
+  - [2023](#2023)
 - [Header-only implementation](#header-only-implementation)
 - [Use Case](#use-case)
   - [Binary packing for a custom game engine](#binary-packing-for-a-custom-game-engine)
@@ -31,9 +31,9 @@
 
 Lempel–Ziv–Storer–Szymanski (LZSS) is a Dictionary-type lossless data compression algorithm that was created in 1982. For more information, see the [Wikipedia article](https://en.wikipedia.org/wiki/Lempel%E2%80%93Ziv%E2%80%93Storer%E2%80%93Szymanski) on LZSS or the [1989](#1989) section in this `README`.
 
-# 2023
+## 2023
 
-2023 Refactoring of the 1989 LZSS.C public domain code written by Haruhiko Okumura. My goal is to give users a choice of using the code as a stand-alone program, as a header file, or as a library. 
+2023 Refactoring of the 1989 LZSS.C public domain code written by Haruhiko Okumura. My goal is to give users a choice of using the code as a stand-alone, functional program, or a `*.hpp` C++ Header-only implementation with Class encapsulation. 
 
 # Header-only implementation
 
