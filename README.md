@@ -153,6 +153,7 @@ The output should exactly match: `sample.ppm: Netpbm image data, size = 1920 x 1
 
 - [7th Guest VDX](http://wiki.xentax.com/index.php/The_7th_Guest_VDX)
 - [Retro Modding Wiki: LZSS Compression](https://wiki.axiodl.com/w/LZSS_Compression)
+- [XeNTaX: LZSS](http://wiki.xentax.com/index.php/LZSS)
   
 ## Documentation
 
