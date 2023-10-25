@@ -30,6 +30,7 @@ SOFTWARE.
 
 #include <iostream>
 #include <fstream>
+#include <filesystem>
 #include <vector>
 
 //===========================================================================
@@ -51,6 +52,8 @@ void Encode(std::istream& inFile, std::ostream& outFile) {
 	std::vector<int> leftChild(historyBufferSize + 257);
 	std::vector<int> rightChild(historyBufferSize + 257);
 	constexpr int nil = historyBufferSize;
+	int match_length = 0;
+	int match_position = 0;
 
 	//
 	// initTree
@@ -68,9 +71,9 @@ void Encode(std::istream& inFile, std::ostream& outFile) {
 	// insertNode
 	//
 	auto insertNode = [&](int r) {
-		auto cmp = 1;
-		const auto& key = buffer[r];
-		auto p = historyBufferSize + 1 + key;
+		int cmp = 1;
+		const unsigned char* key = &buffer[r];
+		int p = historyBufferSize + 1 + buffer[r]; // using buffer[r] as it's the first byte of 'key'.
 
 		rightChild[r] = leftChild[r] = nil;
 		match_length = 0;
@@ -95,8 +98,9 @@ void Encode(std::istream& inFile, std::ostream& outFile) {
 				}
 			}
 
+			// Compare sequences, not individual characters.
 			for (int i = 1; i < maxMatchLength; ++i) {
-				cmp = key[i] - buffer[p + i];
+				cmp = key[i] - buffer[p + i]; // 'key' is a sequence, so compare elements.
 				if (cmp != 0)
 					break;
 			}
@@ -108,6 +112,7 @@ void Encode(std::istream& inFile, std::ostream& outFile) {
 			}
 		}
 
+		// After finding the match, update the tree's links appropriately.
 		parent[r] = parent[p];
 		leftChild[r] = leftChild[p];
 		rightChild[r] = rightChild[p];
@@ -117,7 +122,7 @@ void Encode(std::istream& inFile, std::ostream& outFile) {
 			rightChild[parent[p]] = r;
 		else
 			leftChild[parent[p]] = r;
-		parent[p] = nil;
+		parent[p] = nil; // Disconnect the matched node/sequence.
 		};
 
 	//
@@ -170,8 +175,6 @@ void Encode(std::istream& inFile, std::ostream& outFile) {
 
 	initTree();
 
-	int match_length = 0;
-	int match_position = 0;
 	std::vector<uint8_t> code_buf(1 + maxMatchLength);
 	int code_buf_ptr = 1;
 	int mask = 1;
