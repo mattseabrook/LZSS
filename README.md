@@ -1,15 +1,15 @@
 **Table-of-Contents**
 - [Introduction](#introduction)
   - [2024](#2024)
-- [Changelog: Differences Between Original 1989 `LZSS.C` and 2024 Updated Version](#changelog-differences-between-original-1989-lzssc-and-2024-updated-version)
-  - [General Changes](#general-changes)
-  - [Variable and Structure Updates](#variable-and-structure-updates)
-  - [Functional Enhancements](#functional-enhancements)
-  - [File Processing](#file-processing)
-  - [Code Structure and Organization](#code-structure-and-organization)
-  - [Debugging and Output](#debugging-and-output)
-  - [Additional Features](#additional-features)
-  - [Removed Legacy Components](#removed-legacy-components)
+    - [Differences Between Original 1989 `LZSS.C` and 2024 Updated Version](#differences-between-original-1989-lzssc-and-2024-updated-version)
+      - [General Changes](#general-changes)
+      - [Variable and Structure Updates](#variable-and-structure-updates)
+      - [Functional Enhancements](#functional-enhancements)
+      - [File Processing](#file-processing)
+      - [Code Structure and Organization](#code-structure-and-organization)
+      - [Debugging and Output](#debugging-and-output)
+      - [Additional Features](#additional-features)
+      - [Removed Legacy Components](#removed-legacy-components)
 - [Build](#build)
   - [Linux](#linux)
   - [Windows](#windows)
@@ -41,9 +41,9 @@ Lempel–Ziv–Storer–Szymanski (LZSS) is a Dictionary-type lossless data comp
 
 2024 Refactoring of the original 1989 LZSS.c public domain code written by Haruhiko Okumura. Updated for the `C23` specification, here is a complete list of the enhancements made:
 
-# Changelog: Differences Between Original 1989 `LZSS.C` and 2024 Updated Version
+### Differences Between Original 1989 `LZSS.C` and 2024 Updated Version
 
-## General Changes
+#### General Changes
 - **Language Modernization**
   - Refactored to use C23-compliant practices and modern C idioms.
   - Enabled `_CRT_SECURE_NO_WARNINGS` for compatibility with modern compilers.
@@ -52,7 +52,7 @@ Lempel–Ziv–Storer–Szymanski (LZSS) is a Dictionary-type lossless data comp
   - Introduced `safe_fopen` function for secure file handling with detailed error messages.
   - Improved memory allocation checks for critical resources (`calloc`, `malloc`).
 
-## Variable and Structure Updates
+#### Variable and Structure Updates
 - **Parameter Definitions**
   - `N` -> `RING_BUFFER_SIZE`: Descriptive name for the circular buffer size.
   - `F` -> `MATCH_MAX_LEN`: Maximum match length.
@@ -62,7 +62,7 @@ Lempel–Ziv–Storer–Szymanski (LZSS) is a Dictionary-type lossless data comp
 - **Binary Tree Nodes**
   - Replaced separate arrays `lson`, `rson`, and `dad` with a `TreeNode` struct to encapsulate left, right, and parent pointers.
 
-## Functional Enhancements
+#### Functional Enhancements
 - **Tree Management**
   - `initialize_tree`: Updated for `TreeNode` structure, improved readability.
   - `insert_node`: Modernized logic to use new data structures and avoid unnecessary complexity.
@@ -78,12 +78,12 @@ Lempel–Ziv–Storer–Szymanski (LZSS) is a Dictionary-type lossless data comp
   - Improved flag handling for clarity and performance.
   - Used descriptive variable names for better readability.
 
-## File Processing
+#### File Processing
 - **File I/O**
   - Replaced manual `fopen` calls with `safe_fopen`, ensuring proper error reporting.
   - Ensured all file handles are securely closed after use.
 
-## Code Structure and Organization
+#### Code Structure and Organization
 - **Refactored for Modularity**
   - Separated tree initialization, insertion, encoding, and decoding into distinct functions.
   - Reduced redundancy and improved maintainability.
@@ -92,12 +92,12 @@ Lempel–Ziv–Storer–Szymanski (LZSS) is a Dictionary-type lossless data comp
   - Encapsulated dynamic memory allocation in encoding and decoding processes.
   - Added explicit cleanup steps to prevent memory leaks.
 
-## Debugging and Output
+#### Debugging and Output
 - **Progress and Error Messages**
   - Added verbose error messages for file and memory operations.
   - Output now includes detailed information on encoding and decoding success.
 
-## Additional Features
+#### Additional Features
 - **Boolean Logic**
   - Introduced `bool` type and variables (`<stdbool.h>`) for better logical operations.
   - Improved clarity in loops and conditional checks.
@@ -110,7 +110,7 @@ Lempel–Ziv–Storer–Szymanski (LZSS) is a Dictionary-type lossless data comp
   - Ensured all dynamically allocated resources are freed properly, even in error cases.
   - Added checks to prevent double-free errors.
 
-## Removed Legacy Components
+#### Removed Legacy Components
 - **Progress Reporting**
   - Removed periodic progress printing in favor of simplified operation reporting.
   - Replaced old `printf` debug statements with consistent error and status messages.
