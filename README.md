@@ -29,9 +29,6 @@
   - [2022-11-24](#2022-11-24)
   - [2022-11-21](#2022-11-21)
   - [2022-11-18](#2022-11-18)
-- [TODO](#todo)
-- [Notes](#notes)
-  - [Encode](#encode)
 
 # Introduction
 
@@ -208,6 +205,7 @@ draft-proposed ANSI C.  I tested them with Turbo C 2.0.
 ## 2024-12-08
 
 - `C23` version created, compiled with no warnings using `clang -std=c23 -Wall -O3 -g lzss.c -o lzss.exe`, but there are definitely issues to debug/troubleshoot. 
+- Documentation updates.
 
 ## 2023-10-24
 
@@ -234,16 +232,3 @@ draft-proposed ANSI C.  I tested them with Turbo C 2.0.
 - Changed `FILE` to `fstream` where applicable
 - Changed most variable names to camelCase and full english words
 - Replaced the various `printf` calls with a mix of `std::cout`, `std::fixed`, and `std::precision` as needed.
-
-# TODO
-
-- Test Windows compile
-- After testing see if `nil` can be removed from the 2022 code
-- Remove all of the documentation from the 2022 code and put it in the `README`
-- Expose `N`, `F`, `THRESHOLD`, and possibly others. This will be different for the Stand-alone, Header, and Library solutions.
-
-# Notes
-
-## Encode
-
-- The original algorithm employs a complex scheme of storing the position and length. We're simplifying it by directly storing these values into the buffer. This may need further adjustments based on the decoding scheme.
