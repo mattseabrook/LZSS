@@ -1,10 +1,15 @@
 **Table-of-Contents**
 - [Introduction](#introduction)
-  - [2023](#2023)
-- [Header-only implementation](#header-only-implementation)
-- [Use Case](#use-case)
-  - [Binary packing for a custom game engine](#binary-packing-for-a-custom-game-engine)
-  - [Server-side compression](#server-side-compression)
+  - [2024](#2024)
+- [Changelog: Differences Between Original 1989 `LZSS.C` and 2024 Updated Version](#changelog-differences-between-original-1989-lzssc-and-2024-updated-version)
+  - [General Changes](#general-changes)
+  - [Variable and Structure Updates](#variable-and-structure-updates)
+  - [Functional Enhancements](#functional-enhancements)
+  - [File Processing](#file-processing)
+  - [Code Structure and Organization](#code-structure-and-organization)
+  - [Debugging and Output](#debugging-and-output)
+  - [Additional Features](#additional-features)
+  - [Removed Legacy Components](#removed-legacy-components)
 - [Build](#build)
   - [Linux](#linux)
   - [Windows](#windows)
@@ -19,6 +24,7 @@
     - [References](#references-1)
   - [License](#license)
 - [CHANGELOG](#changelog)
+  - [2024-12-08](#2024-12-08)
   - [2023-10-24](#2023-10-24)
   - [2022-11-24](#2022-11-24)
   - [2022-11-21](#2022-11-21)
@@ -31,47 +37,112 @@
 
 Lempel–Ziv–Storer–Szymanski (LZSS) is a Dictionary-type lossless data compression algorithm that was created in 1982. For more information, see the [Wikipedia article](https://en.wikipedia.org/wiki/Lempel%E2%80%93Ziv%E2%80%93Storer%E2%80%93Szymanski) on LZSS or the [1989](#1989) section in this `README`.
 
-## 2023
+## 2024 
 
-2023 Refactoring of the 1989 LZSS.C public domain code written by Haruhiko Okumura. My goal is to give users a choice of using the code as a stand-alone, functional program, or a `*.hpp` C++ Header-only implementation with Class encapsulation. 
+2024 Refactoring of the original 1989 LZSS.c public domain code written by Haruhiko Okumura. Updated for the `C23` specification, here is a complete list of the enhancements made:
 
-# Header-only implementation
+# Changelog: Differences Between Original 1989 `LZSS.C` and 2024 Updated Version
 
-`lzss.hpp`
+## General Changes
+- **Language Modernization**
+  - Refactored to use C23-compliant practices and modern C idioms.
+  - Enabled `_CRT_SECURE_NO_WARNINGS` for compatibility with modern compilers.
 
-# Use Case
+- **Memory Safety and Error Handling**
+  - Introduced `safe_fopen` function for secure file handling with detailed error messages.
+  - Improved memory allocation checks for critical resources (`calloc`, `malloc`).
 
-## Binary packing for a custom game engine 
+## Variable and Structure Updates
+- **Parameter Definitions**
+  - `N` -> `RING_BUFFER_SIZE`: Descriptive name for the circular buffer size.
+  - `F` -> `MATCH_MAX_LEN`: Maximum match length.
+  - `THRESHOLD` -> `MATCH_THRESHOLD`: Minimum match length for encoding.
+  - `NIL` -> `NODE_UNUSED`: Symbol for unused binary tree nodes.
 
-The game engine itself can have the LZSS library statically linked to perform decompression in real-time, but at some point during the build process of the engine itself there would be a requirement to have an executable that can compress files. This way, each individual asset (eg Bitmap, WAV, MIDI, etc) can be compressed at build time. This would allow the game engine to load assets from disk without having to decompress them at runtime, but that is not really a thing to be concerned about in 2022. It's more about adding another layer of "copy protection" to the individual game assets that would be contained within a larger archive file shipped with the final version.
+- **Binary Tree Nodes**
+  - Replaced separate arrays `lson`, `rson`, and `dad` with a `TreeNode` struct to encapsulate left, right, and parent pointers.
 
-## Server-side compression
+## Functional Enhancements
+- **Tree Management**
+  - `initialize_tree`: Updated for `TreeNode` structure, improved readability.
+  - `insert_node`: Modernized logic to use new data structures and avoid unnecessary complexity.
 
-The stand-alone program can be used with `sqlite3`, as an example, to compress some data before storing it in a database, that would be used on the back-end of a web application, etc.
+- **Encoding Enhancements**
+  - Simplified buffer initialization with `memset`.
+  - Updated match handling logic to improve clarity.
+  - Rewrote loops for explicit `EOF` handling, improving robustness.
+  - Added detailed error handling for memory allocation failures.
+
+- **Decoding Enhancements**
+  - Streamlined decoding process with consistent `EOF` checks.
+  - Improved flag handling for clarity and performance.
+  - Used descriptive variable names for better readability.
+
+## File Processing
+- **File I/O**
+  - Replaced manual `fopen` calls with `safe_fopen`, ensuring proper error reporting.
+  - Ensured all file handles are securely closed after use.
+
+## Code Structure and Organization
+- **Refactored for Modularity**
+  - Separated tree initialization, insertion, encoding, and decoding into distinct functions.
+  - Reduced redundancy and improved maintainability.
+
+- **Memory Management**
+  - Encapsulated dynamic memory allocation in encoding and decoding processes.
+  - Added explicit cleanup steps to prevent memory leaks.
+
+## Debugging and Output
+- **Progress and Error Messages**
+  - Added verbose error messages for file and memory operations.
+  - Output now includes detailed information on encoding and decoding success.
+
+## Additional Features
+- **Boolean Logic**
+  - Introduced `bool` type and variables (`<stdbool.h>`) for better logical operations.
+  - Improved clarity in loops and conditional checks.
+
+- **Switch-Based Main Logic**
+  - Simplified main entry point using `switch` for encoding/decoding selection.
+  - Improved argument validation with descriptive error messages.
+
+- **Comprehensive Resource Cleanup**
+  - Ensured all dynamically allocated resources are freed properly, even in error cases.
+  - Added checks to prevent double-free errors.
+
+## Removed Legacy Components
+- **Progress Reporting**
+  - Removed periodic progress printing in favor of simplified operation reporting.
+  - Replaced old `printf` debug statements with consistent error and status messages.
 
 # Build
 
 ## Linux
 
 ```bash
-# Build with g++
-make
+# Build with clang
 
-# First time run
-./lzss
+clang -std=c23 -Weverything -O3 -g lzss.c -o lzss
 ```
 
 ## Windows
 
-x
-
+```cmd
+clang -std=c23 -Weverything -O3 -g lzss.c -o lzss.exe
+```
 
 # Usage
+
+Included `sample.ppm` as test binary data.
 
 ## Linux
 
 ```bash
-x
+# Compress
+lzss e sample.ppm sample.lzs
+
+# Decompress
+lzss d sample.lzs sample.ppm
 ```
 
 ## Windows
@@ -134,9 +205,13 @@ draft-proposed ANSI C.  I tested them with Turbo C 2.0.
 
 # CHANGELOG
 
+## 2024-12-08
+
+- `C23` version created, compiled with no warnings using `clang -std=c23 -Wall -O3 -g lzss.c -o lzss.exe`, but there are definitely issues to debug/troubleshoot. 
+
 ## 2023-10-24
 
-x
+- Visual Studio 2022 C++ Solution and refactored `lzss.cpp` using latest AI models was added! (legacy, DO NOT USE, included & archived for future analysis)
 
 ## 2022-11-24
 
