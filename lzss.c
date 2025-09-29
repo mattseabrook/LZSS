@@ -1,319 +1,271 @@
-// lzss.c
-
-/*
-
-    Author: Matt Seabrook
-    Date: 2025-09-28
-    Email: info@mattseabrook.net
-
-    Description: This program is a simple refactoring of the LZSS compression algorithm.
-
-*/
+// lzss.c — 7th-Guest–style LZSS (fixed format), C23, binary-safe, GREEDY & CORRECT
+// Tokens per flag byte (LSB-first): 1 = literal (1 byte), 0 = pair (2 bytes).
+// Pair layout: ofs_len = ((distance - 1) << 4) | (length - 3), where distance
+// is the backward match distance in bytes (1..4096). Fixed spec: LENGTH_BITS=4
+// → N=4096, F=16, THR=3. History start at N-F.
 
 #define _CRT_SECURE_NO_WARNINGS
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
-#include <stdbool.h>
 #include <errno.h>
 
-// LZSS Parameters
-#define RING_BUFFER_SIZE 4096
-#define MATCH_MAX_LEN 18
-#define MATCH_THRESHOLD 2
-#define NODE_UNUSED RING_BUFFER_SIZE
-
-// Binary tree node for compression
-typedef struct
+enum
 {
-    int32_t left, right, parent;
-} TreeNode;
+    LENGTH_BITS = 4,
+    LENGTH_MASK = (1u << LENGTH_BITS) - 1u, // 0x0F
+    N = 1 << (16 - LENGTH_BITS),            // 4096
+    F = 1 << LENGTH_BITS,                   // 16
+    THR = 3,                                // actual_len = stored + THR
+    N_MASK = N - 1
+};
 
-// Secure file opening with error handling
-static FILE *safe_fopen(const char *filename, const char *mode)
+static FILE *xfopen(const char *path, const char *mode)
 {
-    FILE *file = fopen(filename, mode);
-    if (!file)
+    FILE *f = fopen(path, mode);
+    if (!f)
     {
-        fprintf(stderr, "Error opening file %s: %s\n", filename, strerror(errno));
-        exit(EXIT_FAILURE);
+        fprintf(stderr, "open %s: %s\n", path, strerror(errno));
+        exit(1);
     }
-    return file;
+    return f;
 }
 
-// Initialize binary search tree
-static void initialize_tree(TreeNode *tree)
+// Find best match strictly in HISTORY (no look-ahead sources).
+// r   = start of look-ahead
+// s   = bytes valid in look-ahead
+// hsz = bytes available in history (0..N)
+static inline void find_best_match_hist_greedy(
+    const uint8_t *ring,
+    uint32_t r,
+    int s,
+    int hsz,
+    int *out_dist,
+    int *out_len)
 {
-    for (int32_t i = RING_BUFFER_SIZE + 1; i <= RING_BUFFER_SIZE + 256; i++)
+    int max_len = s;
+    int best_len = 0, best_dist = 0;
+    const int max_match = F + THR - 1; // 18
+    if (max_len > max_match)
+        max_len = max_match;
+
+    // Scan distances 1..hsz (history only)
+    for (int dist = 1; dist <= hsz; ++dist)
     {
-        tree[i].right = NODE_UNUSED;
-    }
-    for (int32_t i = 0; i < RING_BUFFER_SIZE; i++)
-    {
-        tree[i].parent = NODE_UNUSED;
-    }
-}
-
-// Insert node into binary search tree
-static void insert_node(TreeNode *tree, uint8_t *buffer, int32_t pos,
-                        int32_t *match_pos, int32_t *match_len)
-{
-    int32_t current = RING_BUFFER_SIZE + 1 + buffer[pos];
-    int32_t comparison, depth = 0;
-
-    *match_len = 0;
-    *match_pos = current;
-
-    while (depth < MATCH_MAX_LEN)
-    {
-        comparison = buffer[pos + depth] - buffer[current + depth];
-
-        if (comparison == 0)
+        uint32_t p = (r - (uint32_t)dist) & N_MASK;
+        int L = 0;
+        while (L < max_len)
         {
-            depth++;
-            continue;
-        }
-
-        if (comparison > 0)
-        {
-            if (tree[current].right == NODE_UNUSED)
-            {
-                tree[current].right = pos;
-                tree[pos].parent = current;
-                return;
-            }
-            current = tree[current].right;
-        }
-        else
-        {
-            if (tree[current].left == NODE_UNUSED)
-            {
-                tree[current].left = pos;
-                tree[pos].parent = current;
-                return;
-            }
-            current = tree[current].left;
-        }
-
-        if (depth > *match_len)
-        {
-            *match_len = depth;
-            *match_pos = current;
-        }
-    }
-}
-
-// Encode input file
-static size_t encode(FILE *input, FILE *output)
-{
-    TreeNode *tree = calloc(RING_BUFFER_SIZE + 257, sizeof(TreeNode));
-    uint8_t *ring_buffer = malloc(RING_BUFFER_SIZE + MATCH_MAX_LEN);
-    uint8_t *code_buffer = malloc(17);
-
-    if (!tree || !ring_buffer || !code_buffer)
-    {
-        free(tree);
-        free(ring_buffer);
-        free(code_buffer);
-        fprintf(stderr, "Memory allocation failed\n");
-        return 0;
-    }
-
-    // Initialize
-    initialize_tree(tree);
-    memset(ring_buffer, ' ', RING_BUFFER_SIZE);
-
-    size_t bytes_read = fread(ring_buffer + RING_BUFFER_SIZE, 1, MATCH_MAX_LEN, input);
-    if (bytes_read == 0)
-    {
-        free(tree);
-        free(ring_buffer);
-        free(code_buffer);
-        return 0;
-    }
-
-    size_t encoded_size = 0;
-    uint32_t code_mask = 1;
-    size_t code_index = 1;
-    code_buffer[0] = 0;
-    size_t read_pos = RING_BUFFER_SIZE;
-
-    for (size_t i = 1; i <= MATCH_MAX_LEN; i++)
-    {
-        insert_node(tree, ring_buffer, read_pos - i, &(int32_t){0}, &(int32_t){0});
-    }
-
-    insert_node(tree, ring_buffer, read_pos, &(int32_t){0}, &(int32_t){0});
-
-    while (bytes_read > 0)
-    {
-        int32_t match_pos, match_len;
-        insert_node(tree, ring_buffer, read_pos, &match_pos, &match_len);
-
-        if (match_len <= MATCH_THRESHOLD)
-        {
-            code_buffer[0] |= code_mask;
-            code_buffer[code_index++] = ring_buffer[read_pos];
-            match_len = 1;
-        }
-        else
-        {
-            code_buffer[code_index++] = match_pos;
-            code_buffer[code_index++] = ((match_pos >> 4) & 0xF0) | (match_len - (MATCH_THRESHOLD + 1));
-        }
-
-        code_mask <<= 1;
-        if (code_mask == 0)
-        {
-            fwrite(code_buffer, 1, code_index, output);
-            encoded_size += code_index;
-            code_buffer[0] = 0;
-            code_index = 1;
-            code_mask = 1;
-        }
-
-        // Rewrite processing loop with more explicit EOF handling
-        bool should_continue = false;
-        for (int i = 0; i < match_len; i++)
-        {
-            int c = fgetc(input);
-            if (c == EOF)
-            {
-                bytes_read = 0;
+            if (ring[(r + (uint32_t)L) & N_MASK] != ring[(p + (uint32_t)L) & N_MASK])
                 break;
-            }
-
-            ring_buffer[read_pos] = c;
-            read_pos = (read_pos + 1) % RING_BUFFER_SIZE;
-            insert_node(tree, ring_buffer, read_pos, &(int32_t){0}, &(int32_t){0});
-
-            // Check if we still have bytes to read
-            if (bytes_read > 0)
-            {
-                should_continue = true;
-            }
+            ++L;
         }
-
-        // If no more bytes to read, break out of the main loop
-        if (!should_continue)
+        if (L > best_len)
         {
+            best_len = L;
+            best_dist = dist;
+            if (L == max_len)
+                break;
+        }
+    }
+    if (best_len > s)
+        best_len = s; // EOF safety
+    *out_dist = best_dist;
+    *out_len = best_len;
+}
+
+static size_t encode(FILE *in, FILE *out)
+{
+    uint8_t *ring = (uint8_t *)malloc(N);
+    if (!ring)
+    {
+        fprintf(stderr, "oom\n");
+        exit(1);
+    }
+    memset(ring, 0x00, N); // zeroed history (classic 7G-compatible)
+
+    uint32_t rpos = (uint32_t)(N - F); // start of look-ahead
+    int s = 0;                         // look-ahead size
+    int hsz = 0;                       // bytes in history (0..N)
+
+    // Prime look-ahead ONLY
+    while (s < F)
+    {
+        int ch = fgetc(in);
+        if (ch == EOF)
             break;
-        }
+        ring[(rpos + (uint32_t)s) & N_MASK] = (uint8_t)ch;
+        ++s;
     }
-
-    // Flush remaining code buffer
-    if (code_index > 1)
+    if (s == 0)
     {
-        fwrite(code_buffer, 1, code_index, output);
-        encoded_size += code_index;
-    }
-
-    // Cleanup
-    free(tree);
-    free(ring_buffer);
-    free(code_buffer);
-
-    return encoded_size;
-}
-
-// Decode compressed file
-static size_t decode(FILE *input, FILE *output)
-{
-    uint8_t *ring_buffer = malloc(RING_BUFFER_SIZE + MATCH_MAX_LEN);
-    size_t decoded_size = 0;
-    uint16_t flags = 0;
-    int32_t read_pos = RING_BUFFER_SIZE - MATCH_MAX_LEN;
-
-    if (!ring_buffer)
-    {
-        fprintf(stderr, "Memory allocation failed\n");
+        free(ring);
         return 0;
     }
 
-    // Initialize buffer
-    memset(ring_buffer, ' ', read_pos);
+    uint8_t block[1 + 2 * 8];
+    uint8_t flags = 0, mask = 1;
+    int bidx = 1;
+    block[0] = 0;
+    size_t produced = 0;
 
-    while (1)
+    while (s > 0)
     {
-        if ((flags >>= 1) == 0)
-        {
-            int c = fgetc(input);
-            if (c == EOF)
-                break;
-            flags = (uint16_t)c | 0xFF00;
-        }
+        int dist = 0, mlen = 0;
+        find_best_match_hist_greedy(ring, rpos, s, hsz, &dist, &mlen);
 
-        if (flags & 1)
+        // Pure greedy: encode match if it beats literal threshold, else literal
+        if (mlen > THR)
         {
-            int c = fgetc(input);
-            if (c == EOF)
-                break;
-
-            fputc(c, output);
-            ring_buffer[read_pos] = c;
-            read_pos = (read_pos + 1) % RING_BUFFER_SIZE;
-            decoded_size++;
+            int len_field = mlen - THR; // 0..15
+            if (dist <= 0)
+                dist = 1;                               // safety
+            uint32_t dist_field = (uint32_t)(dist - 1); // store as 0..4095
+            uint16_t ofs_len = (uint16_t)(((dist_field & N_MASK) << LENGTH_BITS) | (uint32_t)(len_field & LENGTH_MASK));
+            block[bidx++] = (uint8_t)(ofs_len & 0xFF);
+            block[bidx++] = (uint8_t)(ofs_len >> 8);
         }
         else
         {
-            int pos = fgetc(input);
-            int len = fgetc(input);
-            if (pos == EOF || len == EOF)
-                break;
+            // literal
+            flags |= mask;
+            block[bidx++] = ring[rpos];
+            mlen = 1;
+        }
 
-            pos |= (len & 0xF0) << 4;
-            len = (len & 0x0F) + MATCH_THRESHOLD;
+        for (int i = 0; i < mlen; ++i)
+        {
+            if (hsz < N)
+                ++hsz;
 
-            for (int i = 0; i <= len; i++)
+            int ch = fgetc(in);
+            if (ch != EOF)
             {
-                uint8_t c = ring_buffer[(pos + i) % RING_BUFFER_SIZE];
-                fputc(c, output);
-                ring_buffer[read_pos] = c;
-                read_pos = (read_pos + 1) % RING_BUFFER_SIZE;
-                decoded_size++;
+                // Append at tail: rpos + s (current s)
+                ring[(rpos + (uint32_t)s) & N_MASK] = (uint8_t)ch;
+                // s remains the same: we are replacing the consumed byte
             }
+            else
+            {
+                // No new byte → lookahead shrinks
+                if (s > 0)
+                    --s;
+            }
+
+            rpos = (rpos + 1u) & N_MASK;
+
+            if (ch == EOF && s == 0)
+                break;
+        }
+
+        // Flush every 8 tokens
+        mask <<= 1;
+        if (mask == 0)
+        {
+            block[0] = flags;
+            fwrite(block, 1, (size_t)bidx, out);
+            produced += (size_t)bidx;
+            flags = 0;
+            mask = 1;
+            bidx = 1;
+            block[0] = 0;
         }
     }
 
-    free(ring_buffer);
-    return decoded_size;
+    // Flush remainder
+    if (mask != 1)
+    {
+        block[0] = flags;
+        fwrite(block, 1, (size_t)bidx, out);
+        produced += (size_t)bidx;
+    }
+
+    free(ring);
+    return produced;
 }
 
-int main(int argc, char *argv[])
+static size_t decode(FILE *in, FILE *out)
 {
-    // Validate arguments
+    uint8_t *ring = (uint8_t *)malloc(N);
+    if (!ring)
+    {
+        fprintf(stderr, "oom\n");
+        exit(1);
+    }
+    memset(ring, 0x00, N); // zeroed history
+
+    uint32_t rpos = (uint32_t)(N - F);
+    size_t produced = 0;
+
+    for (;;)
+    {
+        int fb = fgetc(in);
+        if (fb == EOF)
+            break;
+        uint8_t flags = (uint8_t)fb;
+
+        for (int i = 0; i < 8; ++i, flags >>= 1)
+        {
+            if (flags & 1)
+            {
+                int ch = fgetc(in);
+                if (ch == EOF)
+                    goto done;
+                fputc(ch, out);
+                ring[rpos] = (uint8_t)ch;
+                rpos = (rpos + 1u) & N_MASK;
+                ++produced;
+            }
+            else
+            {
+                int b0 = fgetc(in), b1 = fgetc(in);
+                if (b0 == EOF || b1 == EOF)
+                    goto done;
+                uint16_t ofs_len = (uint16_t)(b0 | (b1 << 8));
+                uint32_t dist_field = (uint32_t)(ofs_len >> LENGTH_BITS);
+                uint32_t distance = dist_field + 1u;                    // stored value was distance - 1
+                uint32_t len = (uint32_t)(ofs_len & LENGTH_MASK) + THR; // 3..18
+                uint32_t offset = (rpos - distance) & N_MASK;
+
+                for (uint32_t j = 0; j < len; ++j)
+                {
+                    uint8_t v = ring[(offset + j) & N_MASK];
+                    fputc(v, out);
+                    ring[rpos] = v;
+                    rpos = (rpos + 1u) & N_MASK;
+                    ++produced;
+                }
+            }
+        }
+    }
+done:
+    free(ring);
+    return produced;
+}
+
+int main(int argc, char **argv)
+{
     if (argc != 4)
     {
-        fprintf(stderr, "Usage:\n  %s e input_file output_file\n  %s d input_file output_file\n",
-                argv[0], argv[0]);
-        return EXIT_FAILURE;
+        fprintf(stderr, "Usage:\n  %s e input output\n  %s d input output\n", argv[0], argv[0]);
+        return 1;
     }
-
-    // Open files
-    FILE *input_file = safe_fopen(argv[2], "rb");
-    FILE *output_file = safe_fopen(argv[3], "wb");
-
-    // Process based on mode
-    size_t processed_size = 0;
-    switch (argv[1][0])
+    FILE *in = xfopen(argv[2], "rb");
+    FILE *out = xfopen(argv[3], "wb");
+    size_t n = 0;
+    if (argv[1][0] == 'e')
+        n = encode(in, out);
+    else if (argv[1][0] == 'd')
+        n = decode(in, out);
+    else
     {
-    case 'e':
-        processed_size = encode(input_file, output_file);
-        break;
-    case 'd':
-        processed_size = decode(input_file, output_file);
-        break;
-    default:
-        fprintf(stderr, "Invalid mode: %c\n", argv[1][0]);
-        fclose(input_file);
-        fclose(output_file);
-        return EXIT_FAILURE;
+        fprintf(stderr, "mode must be e or d\n");
+        fclose(in);
+        fclose(out);
+        return 1;
     }
-
-    // Cleanup
-    fclose(input_file);
-    fclose(output_file);
-
-    return processed_size > 0 ? EXIT_SUCCESS : EXIT_FAILURE;
+    fclose(in);
+    fclose(out);
+    return (n > 0) ? 0 : 2;
 }
