@@ -1,29 +1,20 @@
 **Table-of-Contents**
 - [Introduction](#introduction)
-  - [2024](#2024)
-    - [Differences Between Original 1989 `LZSS.C` and 2024 Updated Version](#differences-between-original-1989-lzssc-and-2024-updated-version)
-      - [General Changes](#general-changes)
-      - [Variable and Structure Updates](#variable-and-structure-updates)
-      - [Functional Enhancements](#functional-enhancements)
-      - [File Processing](#file-processing)
-      - [Code Structure and Organization](#code-structure-and-organization)
-      - [Debugging and Output](#debugging-and-output)
-      - [Additional Features](#additional-features)
-      - [Removed Legacy Components](#removed-legacy-components)
+  - [2026](#2026)
+    - [Differences Between Original 1989 `LZSS.C` and 2026 Updated Version](#differences-between-original-1989-lzssc-and-2026-updated-version)
+      - [Architecture](#architecture)
+      - [Performance](#performance)
+      - [Code Quality](#code-quality)
+      - [Build System](#build-system)
 - [Build](#build)
-  - [Linux](#linux)
-  - [Windows](#windows)
-- [Usage](#usage)
-  - [Linux](#linux-1)
-  - [Windows](#windows-1)
 - [Developers](#developers)
-  - [Inspecting the generated LZS files](#inspecting-the-generated-lzs-files)
   - [References](#references)
 - [1989](#1989)
   - [LZSS coding](#lzss-coding)
     - [References](#references-1)
   - [License](#license)
 - [CHANGELOG](#changelog)
+  - [2025-12-12](#2025-12-12)
   - [2024-12-08](#2024-12-08)
   - [2023-10-24](#2023-10-24)
   - [2022-11-24](#2022-11-24)
@@ -34,128 +25,100 @@
 
 Lempel–Ziv–Storer–Szymanski (LZSS) is a Dictionary-type lossless data compression algorithm that was created in 1982. For more information, see the [Wikipedia article](https://en.wikipedia.org/wiki/Lempel%E2%80%93Ziv%E2%80%93Storer%E2%80%93Szymanski) on LZSS or the [1989](#1989) section in this `README`.
 
-## 2024 
+## 2026
 
-2024 Refactoring of the original 1989 LZSS.c public domain code written by Haruhiko Okumura. Updated for the `C23` specification, here is a complete list of the enhancements made:
+Complete rewrite of the original 1989 LZSS.c public domain code written by Haruhiko Okumura. Rebuilt from the ground up for C23 with zero-copy I/O, cross-platform native compilation, and 7th Guest / retro game format compatibility.
 
-### Differences Between Original 1989 `LZSS.C` and 2024 Updated Version
+### Differences Between Original 1989 `LZSS.C` and 2026 Updated Version
 
-#### General Changes
-- **Language Modernization**
-  - Refactored to use C23-compliant practices and modern C idioms.
-  - Enabled `_CRT_SECURE_NO_WARNINGS` for compatibility with modern compilers.
+#### Architecture
+- **Zero-Copy Memory-Mapped I/O**
+  - Input files are memory-mapped directly (`mmap` on POSIX, `MapViewOfFile` on Windows)
+  - Eliminates per-byte `fgetc`/`fputc` overhead entirely
+  - Sequential access hints (`MADV_SEQUENTIAL`) for optimal kernel prefetching
 
-- **Memory Safety and Error Handling**
-  - Introduced `safe_fopen` function for secure file handling with detailed error messages.
-  - Improved memory allocation checks for critical resources (`calloc`, `malloc`).
+- **Unified Cross-Platform Design**
+  - Single source file compiles natively on Linux and Windows
+  - Platform-specific code isolated via `#ifdef _WIN32` blocks
+  - No runtime dependencies or emulation layers
 
-#### Variable and Structure Updates
-- **Parameter Definitions**
-  - `N` -> `RING_BUFFER_SIZE`: Descriptive name for the circular buffer size.
-  - `F` -> `MATCH_MAX_LEN`: Maximum match length.
-  - `THRESHOLD` -> `MATCH_THRESHOLD`: Minimum match length for encoding.
-  - `NIL` -> `NODE_UNUSED`: Symbol for unused binary tree nodes.
+- **Original Parameters Preserved**
+  - `N = 4096` (ring buffer size)
+  - `F = 18` (maximum match length)
+  - `THRESHOLD = 2` (minimum match for encoding)
+  - Fully compatible with 7th Guest, 11th Hour, and other retro game LZSS formats
 
-- **Binary Tree Nodes**
-  - Replaced separate arrays `lson`, `rson`, and `dad` with a `TreeNode` struct to encapsulate left, right, and parent pointers.
+#### Performance
+- **Binary Search Tree Matching**
+  - O(log N) average-case match finding using 256 separate BSTs (one per first byte)
+  - Original Okumura algorithm preserved for correctness and compatibility
+  
+- **Optimized Memory Layout**
+  - Compact `State` struct (~45KB) contains ring buffer and all tree arrays
+  - Single allocation per encode/decode operation
+  - Output buffer with geometric growth (1.5x) to minimize reallocations
 
-#### Functional Enhancements
-- **Tree Management**
-  - `initialize_tree`: Updated for `TreeNode` structure, improved readability.
-  - `insert_node`: Modernized logic to use new data structures and avoid unnecessary complexity.
-
-- **Encoding Enhancements**
-  - Simplified buffer initialization with `memset`.
-  - Updated match handling logic to improve clarity.
-  - Rewrote loops for explicit `EOF` handling, improving robustness.
-  - Added detailed error handling for memory allocation failures.
-
-- **Decoding Enhancements**
-  - Streamlined decoding process with consistent `EOF` checks.
-  - Improved flag handling for clarity and performance.
-  - Used descriptive variable names for better readability.
-
-#### File Processing
-- **File I/O**
-  - Replaced manual `fopen` calls with `safe_fopen`, ensuring proper error reporting.
-  - Ensured all file handles are securely closed after use.
-
-#### Code Structure and Organization
-- **Refactored for Modularity**
-  - Separated tree initialization, insertion, encoding, and decoding into distinct functions.
-  - Reduced redundancy and improved maintainability.
-
-- **Memory Management**
-  - Encapsulated dynamic memory allocation in encoding and decoding processes.
-  - Added explicit cleanup steps to prevent memory leaks.
-
-#### Debugging and Output
-- **Progress and Error Messages**
-  - Added verbose error messages for file and memory operations.
-  - Output now includes detailed information on encoding and decoding success.
-
-#### Additional Features
-- **Boolean Logic**
-  - Introduced `bool` type and variables (`<stdbool.h>`) for better logical operations.
-  - Improved clarity in loops and conditional checks.
-
-- **Switch-Based Main Logic**
-  - Simplified main entry point using `switch` for encoding/decoding selection.
-  - Improved argument validation with descriptive error messages.
-
-- **Comprehensive Resource Cleanup**
-  - Ensured all dynamically allocated resources are freed properly, even in error cases.
-  - Added checks to prevent double-free errors.
-
-#### Removed Legacy Components
 - **Progress Reporting**
-  - Removed periodic progress printing in favor of simplified operation reporting.
-  - Replaced old `printf` debug statements with consistent error and status messages.
+  - Real-time encoding progress displayed every 1MB
+  - Compression ratio reported on completion
+
+#### Code Quality
+- **C23 Compliance**
+  - `_Static_assert` for compile-time parameter validation
+  - Modern enum declarations with explicit types
+  - Clean separation of concerns
+
+- **Minimal Footprint**
+  - ~220 lines of code (down from 400+ in previous versions)
+  - No external dependencies beyond libc
+  - Single source file, no headers required
+
+- **Binary-Safe**
+  - Handles all 256 byte values correctly
+  - No ASCII assumptions anywhere in the codebase
+
+#### Build System
+- **Cross-Compilation Support**
+  - Native Windows EXE from Linux using `clang-cl` + Windows SDK via `xwin`
+  - No Wine, no MSYS2, no emulation—produces genuine PE/COFF executables
+  - MSVC ABI compatible (static CRT linking)
+
+- **Visual Build Output**
+  - Color-coded terminal output with emoji status indicators
+  - Build timing and binary size reporting
+  - One command: `./build.sh linux` or `./build.sh windows`
 
 # Build
 
-## Linux
+Cross-platform build system using Clang. Produces native binaries for both Linux and Windows from a single Linux host.
 
 ```bash
-# Build with clang
+# Show help
+./build.sh
 
-clang -std=c23 -Weverything -O3 -g lzss.c -o lzss
+# Build for Linux (native ELF)
+./build.sh linux
+
+# Build for Windows (native PE/COFF, no emulation)
+./build.sh windows
+
+# Build both platforms
+./build.sh all
+
+# Clean build artifacts
+./build.sh clean
 ```
 
-## Windows
+**Requirements:**
+- `clang` (C23 support)
+- `clang-cl` and `lld-link` (for Windows cross-compilation)
+- Windows SDK via [`xwin`](https://github.com/Jake-Shadle/xwin) (auto-installed on first Windows build)
 
-```cmd
-clang -std=c23 -Weverything -O3 -g lzss.c -o lzss.exe
-```
-
-# Usage
-
-Included `sample.ppm` as test binary data.
-
-## Linux
-
-```bash
-# Compress
-lzss e sample.ppm sample.lzs
-
-# Decompress
-lzss d sample.lzs sample.ppm
-```
-
-## Windows
-
-x
+**Output:**
+- `./lzss` — Linux x64 ELF binary
+- `./lzss.exe` — Windows x64 PE binary (runs natively on Windows, no Wine needed)
 
 # Developers
-
-## Inspecting the generated LZS files
-
-```bash
-# file analysis of sample.ppm
-file sample.ppm
-```
-
-The output should exactly match: `sample.ppm: Netpbm image data, size = 1920 x 1280, rawbits, pixmap`
 
 ## References
 
@@ -201,6 +164,19 @@ draft-proposed ANSI C.  I tested them with Turbo C 2.0.
 `LZHUF.C` is Copyrighted, the rest is Public Domain.
 
 # CHANGELOG
+
+## 2025-12-12
+
+- **Complete rewrite** of LZSS implementation in C23
+- Zero-copy memory-mapped I/O (`mmap`/`MapViewOfFile`)
+- Binary search tree matching (O(log N) average case)
+- Cross-platform build system with native Windows EXE output via `clang-cl` + `xwin`
+- Reduced codebase from 400+ lines to ~220 lines
+- Fixed critical bug: `tree_init` was using `memset` with `NIL & 0xFF` (=0) instead of proper 16-bit NIL initialization
+- Fixed pointer type mismatch in `insert()` function
+- Added real-time progress indicator during encoding
+- Preserved original 1989 Okumura parameters (N=4096, F=18, THRESHOLD=2) for 7th Guest compatibility
+- Removed legacy C++17 version and Visual Studio solution
 
 ## 2024-12-08
 

@@ -1,271 +1,225 @@
-// lzss.c — 7th-Guest–style LZSS (fixed format), C23, binary-safe, GREEDY & CORRECT
-// Tokens per flag byte (LSB-first): 1 = literal (1 byte), 0 = pair (2 bytes).
-// Pair layout: ofs_len = ((distance - 1) << 4) | (length - 3), where distance
-// is the backward match distance in bytes (1..4096). Fixed spec: LENGTH_BITS=4
-// → N=4096, F=16, THR=3. History start at N-F.
-
+/*═══════════════════════════════════════════════════════════════════════════╗
+║  LZSS — Lempel-Ziv-Storer-Szymanski Compression                            ║
+║════════════════════════════════════════════════════════=═══════════════════╣
+║  C23 • Zero-Copy Memory-Mapped I/O • Binary-Safe                           ║
+║  Public Domain — 2026 Refactor of Haruhiko Okumura's 1989 Implementation   ║
+║                                                                            ║
+║  Format: 12-bit offset, 4-bit length, LSB-first flag bytes                 ║
+║                                                                            ║
+║  Author: Matt Seabrook (info@mattseabrook.net)                             ║ 
+╚═══════════════════════════════════════════════════════════════════════════*/
 #define _CRT_SECURE_NO_WARNINGS
-#include <stdio.h>
-#include <stdlib.h>
+#define _POSIX_C_SOURCE 200809L
+#define _DEFAULT_SOURCE
 #include <stdint.h>
 #include <string.h>
-#include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-enum
-{
-    LENGTH_BITS = 4,
-    LENGTH_MASK = (1u << LENGTH_BITS) - 1u, // 0x0F
-    N = 1 << (16 - LENGTH_BITS),            // 4096
-    F = 1 << LENGTH_BITS,                   // 16
-    THR = 3,                                // actual_len = stored + THR
-    N_MASK = N - 1
+#ifdef _WIN32
+  #define WIN32_LEAN_AND_MEAN
+  #include <windows.h>
+  typedef struct { uint8_t *data; size_t size; HANDLE fh, mh; } Map;
+  static Map map_open(const char *path) {
+    Map m = {0};
+    m.fh = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, 0, 0);
+    if (m.fh == INVALID_HANDLE_VALUE) return m;
+    LARGE_INTEGER sz; GetFileSizeEx(m.fh, &sz); m.size = sz.QuadPart;
+    if (!m.size) { CloseHandle(m.fh); return (Map){0}; }
+    m.mh = CreateFileMappingA(m.fh, 0, PAGE_READONLY, 0, 0, 0);
+    m.data = m.mh ? MapViewOfFile(m.mh, FILE_MAP_READ, 0, 0, 0) : 0;
+    if (!m.data) { CloseHandle(m.mh); CloseHandle(m.fh); return (Map){0}; }
+    return m;
+  }
+  static void map_close(Map *m) {
+    if (m->data) UnmapViewOfFile(m->data);
+    if (m->mh) CloseHandle(m->mh);
+    if (m->fh) CloseHandle(m->fh);
+  }
+#else
+  #include <sys/mman.h>
+  #include <sys/stat.h>
+  #include <fcntl.h>
+  #include <unistd.h>
+  typedef struct { uint8_t *data; size_t size; int fd; } Map;
+  static Map map_open(const char *path) {
+    Map m = {0}; struct stat st;
+    if ((m.fd = open(path, O_RDONLY)) < 0 || fstat(m.fd, &st) < 0) return m;
+    m.size = st.st_size;
+    if (!m.size || (m.data = mmap(0, m.size, PROT_READ, MAP_PRIVATE, m.fd, 0)) == MAP_FAILED)
+      { close(m.fd); return (Map){0}; }
+    madvise(m.data, m.size, MADV_SEQUENTIAL);
+    return m;
+  }
+  static void map_close(Map *m) { if (m->data) munmap(m->data, m->size); if (m->fd >= 0) close(m->fd); }
+#endif
+
+/*───────────────────────────────────────────────────────────────────────────╮
+│ LZSS Parameters — Original 1989 Okumura used these exact values.           │
+╰───────────────────────────────────────────────────────────────────────────*/
+enum {
+    RING_SIZE   = 4096,     // Ring buffer size in bytes (N = 2^12)
+    MAX_MATCH   = 18,       // Maximum match length (F = lookahead size)
+    MIN_MATCH   = 2,        // Minimum match for encoding (THRESHOLD)
+    NIL         = RING_SIZE // Null node pointer for binary search tree
 };
 
-static FILE *xfopen(const char *path, const char *mode)
-{
-    FILE *f = fopen(path, mode);
-    if (!f)
-    {
-        fprintf(stderr, "open %s: %s\n", path, strerror(errno));
-        exit(1);
-    }
-    return f;
+// Convenience aliases (classic LZSS naming)
+#define N   RING_SIZE
+#define F   MAX_MATCH
+#define THR MIN_MATCH
+
+_Static_assert(N == 4096 && F == 18 && THR == 2, "7th Guest params");
+
+typedef struct { uint8_t *d; size_t sz, cap; } Buf;
+static void buf_grow(Buf *b, size_t need) {
+  if (b->sz + need <= b->cap) return;
+  while (b->cap < b->sz + need) b->cap += b->cap / 2 + 64;
+  b->d = realloc(b->d, b->cap);
 }
 
-// Find best match strictly in HISTORY (no look-ahead sources).
-// r   = start of look-ahead
-// s   = bytes valid in look-ahead
-// hsz = bytes available in history (0..N)
-static inline void find_best_match_hist_greedy(
-    const uint8_t *ring,
-    uint32_t r,
-    int s,
-    int hsz,
-    int *out_dist,
-    int *out_len)
-{
-    int max_len = s;
-    int best_len = 0, best_dist = 0;
-    const int max_match = F + THR - 1; // 18
-    if (max_len > max_match)
-        max_len = max_match;
+typedef struct {
+  uint8_t ring[N + F - 1];
+  uint16_t lc[N + 1], rc[N + 257], par[N + 1];
+  uint16_t mpos; uint8_t mlen;
+} State;
 
-    // Scan distances 1..hsz (history only)
-    for (int dist = 1; dist <= hsz; ++dist)
-    {
-        uint32_t p = (r - (uint32_t)dist) & N_MASK;
-        int L = 0;
-        while (L < max_len)
-        {
-            if (ring[(r + (uint32_t)L) & N_MASK] != ring[(p + (uint32_t)L) & N_MASK])
-                break;
-            ++L;
-        }
-        if (L > best_len)
-        {
-            best_len = L;
-            best_dist = dist;
-            if (L == max_len)
-                break;
-        }
-    }
-    if (best_len > s)
-        best_len = s; // EOF safety
-    *out_dist = best_dist;
-    *out_len = best_len;
+static void tree_init(State *s) {
+  for (int i = N + 1; i <= N + 256; ++i) s->rc[i] = NIL;
+  for (int i = 0; i <= N; ++i) s->par[i] = NIL;  // Can't use memset: NIL=4096 is 16-bit
 }
 
-static size_t encode(FILE *in, FILE *out)
-{
-    uint8_t *ring = (uint8_t *)malloc(N);
-    if (!ring)
-    {
-        fprintf(stderr, "oom\n");
-        exit(1);
-    }
-    memset(ring, 0x00, N); // zeroed history (classic 7G-compatible)
-
-    uint32_t rpos = (uint32_t)(N - F); // start of look-ahead
-    int s = 0;                         // look-ahead size
-    int hsz = 0;                       // bytes in history (0..N)
-
-    // Prime look-ahead ONLY
-    while (s < F)
-    {
-        int ch = fgetc(in);
-        if (ch == EOF)
-            break;
-        ring[(rpos + (uint32_t)s) & N_MASK] = (uint8_t)ch;
-        ++s;
-    }
-    if (s == 0)
-    {
-        free(ring);
-        return 0;
-    }
-
-    uint8_t block[1 + 2 * 8];
-    uint8_t flags = 0, mask = 1;
-    int bidx = 1;
-    block[0] = 0;
-    size_t produced = 0;
-
-    while (s > 0)
-    {
-        int dist = 0, mlen = 0;
-        find_best_match_hist_greedy(ring, rpos, s, hsz, &dist, &mlen);
-
-        // Pure greedy: encode match if it beats literal threshold, else literal
-        if (mlen > THR)
-        {
-            int len_field = mlen - THR; // 0..15
-            if (dist <= 0)
-                dist = 1;                               // safety
-            uint32_t dist_field = (uint32_t)(dist - 1); // store as 0..4095
-            uint16_t ofs_len = (uint16_t)(((dist_field & N_MASK) << LENGTH_BITS) | (uint32_t)(len_field & LENGTH_MASK));
-            block[bidx++] = (uint8_t)(ofs_len & 0xFF);
-            block[bidx++] = (uint8_t)(ofs_len >> 8);
-        }
-        else
-        {
-            // literal
-            flags |= mask;
-            block[bidx++] = ring[rpos];
-            mlen = 1;
-        }
-
-        for (int i = 0; i < mlen; ++i)
-        {
-            if (hsz < N)
-                ++hsz;
-
-            int ch = fgetc(in);
-            if (ch != EOF)
-            {
-                // Append at tail: rpos + s (current s)
-                ring[(rpos + (uint32_t)s) & N_MASK] = (uint8_t)ch;
-                // s remains the same: we are replacing the consumed byte
-            }
-            else
-            {
-                // No new byte → lookahead shrinks
-                if (s > 0)
-                    --s;
-            }
-
-            rpos = (rpos + 1u) & N_MASK;
-
-            if (ch == EOF && s == 0)
-                break;
-        }
-
-        // Flush every 8 tokens
-        mask <<= 1;
-        if (mask == 0)
-        {
-            block[0] = flags;
-            fwrite(block, 1, (size_t)bidx, out);
-            produced += (size_t)bidx;
-            flags = 0;
-            mask = 1;
-            bidx = 1;
-            block[0] = 0;
-        }
-    }
-
-    // Flush remainder
-    if (mask != 1)
-    {
-        block[0] = flags;
-        fwrite(block, 1, (size_t)bidx, out);
-        produced += (size_t)bidx;
-    }
-
-    free(ring);
-    return produced;
+static void insert(State *s, uint32_t r) {
+  uint8_t *key = &s->ring[r];
+  uint32_t p = N + 1 + key[0];
+  s->rc[r] = s->lc[r] = NIL; s->mlen = 0;
+  int cmp = 1;
+  for (;;) {
+    uint16_t *branch = cmp >= 0 ? &s->rc[p] : &s->lc[p];
+    if (*branch != NIL) { p = *branch; }
+    else { *branch = r; s->par[r] = p; return; }
+    uint32_t i = 1;
+    while (i < F && key[i] == s->ring[p + i]) ++i;
+    if (i > s->mlen) { s->mpos = p; s->mlen = i; if (i >= F) break; }
+    cmp = key[i] - s->ring[p + i];
+  }
+  s->par[r] = s->par[p]; s->lc[r] = s->lc[p]; s->rc[r] = s->rc[p];
+  s->par[s->lc[p]] = s->par[s->rc[p]] = r;
+  *(s->rc[s->par[p]] == p ? &s->rc[s->par[p]] : &s->lc[s->par[p]]) = r;
+  s->par[p] = NIL;
 }
 
-static size_t decode(FILE *in, FILE *out)
-{
-    uint8_t *ring = (uint8_t *)malloc(N);
-    if (!ring)
-    {
-        fprintf(stderr, "oom\n");
-        exit(1);
+static void delete(State *s, uint32_t p) {
+  if (s->par[p] == NIL) return;
+  uint32_t q;
+  if (s->rc[p] == NIL) q = s->lc[p];
+  else if (s->lc[p] == NIL) q = s->rc[p];
+  else {
+    q = s->lc[p];
+    if (s->rc[q] != NIL) {
+      while (s->rc[q] != NIL) q = s->rc[q];
+      s->rc[s->par[q]] = s->lc[q]; s->par[s->lc[q]] = s->par[q];
+      s->lc[q] = s->lc[p]; s->par[s->lc[p]] = q;
     }
-    memset(ring, 0x00, N); // zeroed history
-
-    uint32_t rpos = (uint32_t)(N - F);
-    size_t produced = 0;
-
-    for (;;)
-    {
-        int fb = fgetc(in);
-        if (fb == EOF)
-            break;
-        uint8_t flags = (uint8_t)fb;
-
-        for (int i = 0; i < 8; ++i, flags >>= 1)
-        {
-            if (flags & 1)
-            {
-                int ch = fgetc(in);
-                if (ch == EOF)
-                    goto done;
-                fputc(ch, out);
-                ring[rpos] = (uint8_t)ch;
-                rpos = (rpos + 1u) & N_MASK;
-                ++produced;
-            }
-            else
-            {
-                int b0 = fgetc(in), b1 = fgetc(in);
-                if (b0 == EOF || b1 == EOF)
-                    goto done;
-                uint16_t ofs_len = (uint16_t)(b0 | (b1 << 8));
-                uint32_t dist_field = (uint32_t)(ofs_len >> LENGTH_BITS);
-                uint32_t distance = dist_field + 1u;                    // stored value was distance - 1
-                uint32_t len = (uint32_t)(ofs_len & LENGTH_MASK) + THR; // 3..18
-                uint32_t offset = (rpos - distance) & N_MASK;
-
-                for (uint32_t j = 0; j < len; ++j)
-                {
-                    uint8_t v = ring[(offset + j) & N_MASK];
-                    fputc(v, out);
-                    ring[rpos] = v;
-                    rpos = (rpos + 1u) & N_MASK;
-                    ++produced;
-                }
-            }
-        }
-    }
-done:
-    free(ring);
-    return produced;
+    s->rc[q] = s->rc[p]; s->par[s->rc[p]] = q;
+  }
+  s->par[q] = s->par[p];
+  *(s->rc[s->par[p]] == p ? &s->rc[s->par[p]] : &s->lc[s->par[p]]) = q;
+  s->par[p] = NIL;
 }
 
-int main(int argc, char **argv)
-{
-    if (argc != 4)
-    {
-        fprintf(stderr, "Usage:\n  %s e input output\n  %s d input output\n", argv[0], argv[0]);
-        return 1;
+static Buf encode(const uint8_t *in, size_t len) {
+  Buf out = { malloc(len + len/8 + 256), 0, len + len/8 + 256 };
+  if (!len) return out;
+  State *s = calloc(1, sizeof(State));
+  memset(s->ring, ' ', N - F);
+  tree_init(s);
+
+  uint8_t code[17], flags = 0, mask = 1;
+  uint32_t cptr = 1, pos = 0, sid = 0, r = N - F, n = 0;
+  size_t next_progress = 0;
+
+  // Prime lookahead buffer
+  while (n < F && pos < len) s->ring[r + n++] = in[pos++];
+  for (uint32_t i = 1; i <= F; ++i) insert(s, r - i);
+  insert(s, r);
+
+  while (n > 0) {
+    // Progress indicator every 1MB
+    if (pos >= next_progress) {
+      fprintf(stderr, "\rEncoding: %zu / %zu bytes (%.1f%%)", pos, len, 100.0 * pos / len);
+      next_progress = pos + (1 << 20);
     }
-    FILE *in = xfopen(argv[2], "rb");
-    FILE *out = xfopen(argv[3], "wb");
-    size_t n = 0;
-    if (argv[1][0] == 'e')
-        n = encode(in, out);
-    else if (argv[1][0] == 'd')
-        n = decode(in, out);
-    else
-    {
-        fprintf(stderr, "mode must be e or d\n");
-        fclose(in);
-        fclose(out);
-        return 1;
+
+    uint32_t ml = s->mlen > n ? n : s->mlen;
+    if (ml <= THR) { ml = 1; flags |= mask; code[cptr++] = s->ring[r]; }
+    else { code[cptr++] = s->mpos & 0xFF; code[cptr++] = ((s->mpos >> 4) & 0xF0) | (ml - THR - 1); }
+    
+    if (!(mask <<= 1)) {
+      code[0] = flags; buf_grow(&out, cptr); memcpy(out.d + out.sz, code, cptr); out.sz += cptr;
+      flags = 0; mask = 1; cptr = 1;
     }
-    fclose(in);
-    fclose(out);
-    return (n > 0) ? 0 : 2;
+
+    // Slide window by ml positions
+    for (uint32_t i = 0; i < ml; ++i) {
+      delete(s, sid);
+      if (pos < len) {
+        uint8_t c = in[pos++];
+        s->ring[sid] = c;
+        if (sid < F - 1) s->ring[sid + N] = c;
+      } else {
+        --n;
+      }
+      sid = (sid + 1) & (N - 1);
+      r = (r + 1) & (N - 1);
+      if (n > 0) insert(s, r);
+    }
+  }
+
+  if (cptr > 1) { code[0] = flags; buf_grow(&out, cptr); memcpy(out.d + out.sz, code, cptr); out.sz += cptr; }
+  fprintf(stderr, "\r\033[K"); // Clear progress line
+  free(s);
+  return out;
+}
+
+static Buf decode(const uint8_t *in, size_t len) {
+  Buf out = { malloc(len * 4), 0, len * 4 };
+  uint8_t ring[N]; memset(ring, ' ', N - F);
+  uint32_t r = N - F, pos = 0;
+  while (pos < len) {
+    uint32_t flags = in[pos++] | 0xFF00;
+    for (; (flags & 0x100) && pos < len; flags >>= 1) {
+      if (flags & 1) {
+        uint8_t c = in[pos++];
+        buf_grow(&out, 1); out.d[out.sz++] = c;
+        ring[r] = c; r = (r + 1) & (N - 1);
+      } else {
+        if (pos + 1 >= len) break;
+        uint32_t lo = in[pos++], hi = in[pos++];
+        uint32_t p = lo | ((hi & 0xF0) << 4), ml = (hi & 0x0F) + THR + 1;
+        buf_grow(&out, ml);
+        for (uint32_t k = 0; k < ml; ++k) {
+          uint8_t c = ring[(p + k) & (N - 1)];
+          out.d[out.sz++] = c; ring[r] = c; r = (r + 1) & (N - 1);
+        }
+      }
+    }
+  }
+  return out;
+}
+
+int main(int argc, char **argv) {
+  if (argc != 4 || (argv[1][0] != 'e' && argv[1][0] != 'd')) {
+    fprintf(stderr, "LZSS — C23 (N=%d F=%d THR=%d)\nUsage: %s e|d <in> <out>\n", N, F, THR, argv[0]);
+    return 1;
+  }
+  Map m = map_open(argv[2]);
+  if (!m.data && m.size) { fprintf(stderr, "Cannot open %s\n", argv[2]); return 1; }
+  Buf out = argv[1][0] == 'e' ? encode(m.data, m.size) : decode(m.data, m.size);
+  fprintf(stderr, "%s: %zu → %zu bytes\n", argv[1][0] == 'e' ? "Encoded" : "Decoded", m.size, out.sz);
+  map_close(&m);
+  FILE *f = fopen(argv[3], "wb");
+  if (!f || fwrite(out.d, 1, out.sz, f) != out.sz) { fprintf(stderr, "Write error\n"); return 1; }
+  fclose(f); free(out.d);
+  return 0;
 }
