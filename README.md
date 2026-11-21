@@ -1,132 +1,142 @@
-**Table-of-Contents**
-- [Introduction](#introduction)
-  - [2026](#2026)
-    - [Differences Between Original 1989 `LZSS.C` and 2026 Updated Version](#differences-between-original-1989-lzssc-and-2026-updated-version)
-      - [Architecture](#architecture)
-      - [Performance](#performance)
-      - [Code Quality](#code-quality)
-      - [Build System](#build-system)
-- [Build](#build)
+**Table of contents**
+
+- [Input cursor width](#input-cursor-width)
+- [Assembly](#assembly)
+  - [Build](#build)
+- [C23](#c23)
+  - [Header-only implementation](#header-only-implementation)
+  - [Executable](#executable)
+- [Usage](#usage)
 - [Developers](#developers)
-  - [References](#references)
-- [1989](#1989)
+  - [Toolchains](#toolchains)
+- [References](#references)
+  - [Links](#links)
+  - [1989](#1989)
   - [LZSS coding](#lzss-coding)
-    - [References](#references-1)
   - [License](#license)
-- [CHANGELOG](#changelog)
-  - [2025-12-12](#2025-12-12)
-  - [2024-12-08](#2024-12-08)
-  - [2023-10-24](#2023-10-24)
-  - [2022-11-24](#2022-11-24)
-  - [2022-11-21](#2022-11-21)
-  - [2022-11-18](#2022-11-18)
 
-# Introduction
+Lempel–Ziv–Storer–Szymanski (LZSS) is a dictionary-based lossless compression algorithm created in 1982. This repository provides a standalone C23 header and command-line executables with C23 or assembly codecs. Both use Haruhiko Okumura's 4 KiB sliding window, 18-byte maximum match and least-significant-bit-first flags for the raw LZSS format used by The 7th Guest. [Original 1989 notes](#1989) · [ISO/IEC 9899:2024](https://www.iso.org/standard/82075.html)
 
-Lempel–Ziv–Storer–Szymanski (LZSS) is a Dictionary-type lossless data compression algorithm that was created in 1982. For more information, see the [Wikipedia article](https://en.wikipedia.org/wiki/Lempel%E2%80%93Ziv%E2%80%93Storer%E2%80%93Szymanski) on LZSS or the [1989](#1989) section in this `README`.
+Both executables memory-map input files. The encoder uses roughly 29 KiB of scratch space, and the decoder uses bytes already produced as its history. The output buffer grows as needed. The CLI opens the destination after processing the input, so the same path can serve as input and output. Peak memory depends on output size.
 
-## 2026
+# Input cursor width
 
-Complete rewrite of the original 1989 LZSS.c public domain code written by Haruhiko Okumura. Rebuilt from the ground up for C23 with zero-copy I/O, cross-platform native compilation, and 7th Guest / retro game format compatibility.
-
-### Differences Between Original 1989 `LZSS.C` and 2026 Updated Version
-
-#### Architecture
-- **Zero-Copy Memory-Mapped I/O**
-  - Input files are memory-mapped directly (`mmap` on POSIX, `MapViewOfFile` on Windows)
-  - Eliminates per-byte `fgetc`/`fputc` overhead entirely
-  - Sequential access hints (`MADV_SEQUENTIAL`) for optimal kernel prefetching
-
-- **Unified Cross-Platform Design**
-  - Single source file compiles natively on Linux and Windows
-  - Platform-specific code isolated via `#ifdef _WIN32` blocks
-  - No runtime dependencies or emulation layers
-
-- **Original Parameters Preserved**
-  - `N = 4096` (ring buffer size)
-  - `F = 18` (maximum match length)
-  - `THRESHOLD = 2` (minimum match for encoding)
-  - Fully compatible with 7th Guest, 11th Hour, and other retro game LZSS formats
-
-#### Performance
-- **Binary Search Tree Matching**
-  - O(log N) average-case match finding using 256 separate BSTs (one per first byte)
-  - Original Okumura algorithm preserved for correctness and compatibility
-  
-- **Optimized Memory Layout**
-  - Compact `State` struct (~45KB) contains ring buffer and all tree arrays
-  - Single allocation per encode/decode operation
-  - Output buffer with geometric growth (1.5x) to minimize reallocations
-
-- **Progress Reporting**
-  - Real-time encoding progress displayed every 1MB
-  - Compression ratio reported on completion
-
-#### Code Quality
-- **C23 Compliance**
-  - `_Static_assert` for compile-time parameter validation
-  - Modern enum declarations with explicit types
-  - Clean separation of concerns
-
-- **Minimal Footprint**
-  - ~220 lines of code (down from 400+ in previous versions)
-  - No external dependencies beyond libc
-  - Single source file, no headers required
-
-- **Binary-Safe**
-  - Handles all 256 byte values correctly
-  - No ASCII assumptions anywhere in the codebase
-
-#### Build System
-- **Cross-Compilation Support**
-  - Native Windows EXE from Linux using `clang-cl` + Windows SDK via `xwin`
-  - No Wine, no MSYS2, no emulation—produces genuine PE/COFF executables
-  - MSVC ABI compatible (static CRT linking)
-
-- **Visual Build Output**
-  - Color-coded terminal output with emoji status indicators
-  - Build timing and binary size reporting
-  - One command: `./build.sh linux` or `./build.sh windows`
-
-# Build
-
-Cross-platform build system using Clang. Produces native binaries for both Linux and Windows from a single Linux host.
+`LZSS_CURSOR_BITS` sets the input size limit for both the C and assembly executables. Both build scripts default to `64` and accept a per-build override. Run these examples from the repository root.
 
 ```bash
-# Show help
-./build.sh
-
-# Build for Linux (native ELF)
-./build.sh linux
-
-# Build for Windows (native PE/COFF, no emulation)
-./build.sh windows
-
-# Build both platforms
-./build.sh all
-
-# Clean build artifacts
-./build.sh clean
+./C/build.sh linux                       # C, default 64-bit input limit
+./ASM/build.sh linux                     # Assembly, default 64-bit input limit
+LZSS_CURSOR_BITS=32 ./C/build.sh linux    # C, 32-bit input limit
+LZSS_CURSOR_BITS=32 ./ASM/build.sh linux  # Assembly, 32-bit input limit
 ```
 
-**Requirements:**
-- `clang` (C23 support)
-- `clang-cl` and `lld-link` (for Windows cross-compilation)
-- Windows SDK via [`xwin`](https://github.com/Jake-Shadle/xwin) (auto-installed on first Windows build)
+| Value | Input size for both executables |
+| ----- | ------------------------------- |
+| `64` | Supports inputs of 4 GiB and larger when the OS, address space and available memory permit. |
+| `32` | Caps inputs at 4 GiB minus one byte (4,294,967,295 bytes). |
 
-**Output:**
-- `./lzss` — Linux x64 ELF binary
-- `./lzss.exe` — Windows x64 PE binary (runs natively on Windows, no Wine needed)
+The shared CLI enforces the limit before mapping the input file. The C codec uses 32-bit input cursors in `32` mode. The assembly codecs use 64-bit input cursors in both modes. Both settings use the same executable architecture and raw LZSS format.
+
+For header-only C use, compile with `-DLZSS_CURSOR_BITS=32` to select the same 32-bit input limit.
+
+# Assembly
+
+The x86-64 codec is written in NASM and assembles to ELF, Win64 COFF, or Mach-O. The AArch64 codec uses Clang's assembler for native Apple Silicon and Linux Arm64. Both implement the match tree, encoder and decoder in assembly, using the C codec's match order and tie-breaking rules to produce the same compressed bytes. They share the C front end for file I/O, buffer allocation and CLI messages. [NASM documentation](https://www.nasm.us/doc/nasm01.html)
+
+## Build
+
+Run these commands from ASM directory.
+
+| Command                  | Output                                          |
+| ------------------------ | ----------------------------------------------- |
+| `./ASM/build.sh linux`   | `ASM/lzss`, x86-64 or AArch64 ELF               |
+| `./ASM/build.sh windows` | `ASM/lzss.exe`, native Windows x64 PE/COFF      |
+| `./ASM/build.sh macos`   | `ASM/lzss-macos`, Intel or Apple Silicon Mach-O |
+| `./ASM/build.sh all`     | All three targets in parallel                   |
+| `./ASM/build.sh clean`   | Removes the assembly executables                |
+
+Set `LZSS_OUTPUT_DIR` to override the output directory. Install NASM for x86-64 targets and use a Clang-based toolchain for AArch64. See [toolchains](#toolchains) for platform setup.
+
+# C23
+
+## Header-only implementation
+
+Copy [`C/lzss.h`](C/lzss.h) into your project and include it from C23. The header contains the whole in-memory codec and uses only the C standard library. It needs no companion object, platform headers or implementation macro. You can include it in multiple translation units.
+
+```c
+#include "lzss.h"
+
+int main(void) {
+  const unsigned char input[] = {0, 1, 2, 0, 1, 2};
+  lzss_buffer packed = {0};
+  lzss_buffer restored = {0};
+
+  if (!lzss_encode(input, sizeof input, &packed))
+    return 1;
+
+  bool ok = lzss_decode(packed.data, packed.size, &restored);
+  lzss_free(&restored);
+  lzss_free(&packed);
+  return ok ? 0 : 1;
+}
+```
+
+Pass a fresh or released `lzss_buffer` to `lzss_encode` or `lzss_decode`. On success, `data` and `size` describe the result. On failure the result is empty. Release it with `lzss_free` before reusing it. Empty input is valid, including `NULL` with a size of zero. The header uses standard allocation and needs enough memory for the output and encoder workspace. For a freestanding target, supply those library facilities and budget the workspace before integrating it.
+
+## Executable
+
+Run these commands from the C directory.
+
+| Command                | Output                            |
+| ---------------------- | --------------------------------- |
+| `./C/build.sh linux`   | `C/lzss`, native Linux ELF        |
+| `./C/build.sh windows` | `C/lzss.exe`, Windows x64 PE/COFF |
+| `./C/build.sh macos`   | `C/lzss-macos`, macOS Mach-O      |
+| `./C/build.sh all`     | All three targets in parallel     |
+| `./C/build.sh clean`   | Removes the C executables         |
+
+Set `LZSS_OUTPUT_DIR` to override the output directory.
+
+# Usage
+
+Both executables use the same CLI. These examples use the Linux binary names.
+
+```bash
+# Compress a file
+./C/lzss e input.bin output.lzs
+
+# Decompress the file with the assembly executable
+./ASM/lzss d output.lzs restored.bin
+```
 
 # Developers
 
-## References
+## Toolchains
+
+On Ubuntu 24.04, install the versioned LLVM packages and expose the tools on your `PATH`. On Arch Linux, use the distribution packages. The `nasm` package is needed for x86-64 assembly builds.
+
+```bash
+# Ubuntu 24.04
+sudo apt install build-essential clang-19 lld-19 nasm
+export PATH="/usr/lib/llvm-19/bin:$PATH"
+
+# Arch Linux
+sudo pacman -S --needed clang lld nasm
+```
+
+- **Linux** defaults to the native Clang target. Set `CC_LINUX` to a configured cross-compiler and `LINUX_SYSROOT` if needed.
+- **Windows** uses `clang-cl`, `lld-link`, and the Microsoft SDK and static CRT to link a native x64 executable from Linux without Wine or emulation. The script checks `WINSDK_BASE`, `/opt/winsdk`, the v64tng cache and the LZSS cache. If the SDK is absent, add `xwin` to your `PATH` and rerun the build to download it and review the SDK license. On Windows, use a Visual Studio developer environment with LLVM available in Git Bash, MSYS2, or Cygwin. [xwin releases](https://github.com/Jake-Shadle/xwin/releases)
+- **macOS** uses a current Xcode Command Line Tools installation on the Mac. The native build defaults to the host architecture. Use `MACOS_ARCH=arm64` or `MACOS_ARCH=x86_64` to choose a target. On Linux, use osxcross, a configured `CC_MACOS`, or an Apple SDK in `SDKROOT` with Clang and `ld64.lld`. The SDK-based cross-build defaults to Intel and macOS 14.0. Use `MACOS_ARCH=arm64` for Apple Silicon and `MACOSX_DEPLOYMENT_TARGET` to set the minimum OS version. Install NASM for the Intel assembly path. [osxcross](https://github.com/tpoechtrager/osxcross)
+
+# References
+
+## Links
 
 - [7th Guest VDX](http://wiki.xentax.com/index.php/The_7th_Guest_VDX)
 - [Retro Modding Wiki: LZSS Compression](https://wiki.axiodl.com/w/LZSS_Compression)
 - [XeNTaX: LZSS](http://wiki.xentax.com/index.php/LZSS)
   
-# 1989
+## 1989
 
 The original code is written in C and is compatible with C89 in the context of Linux. Only the information pertaining to LZSS from Haruhiko Okumura's 1989 `COMPRESS.TXT` file has been surfaced in this `README`.
 
@@ -153,8 +163,6 @@ implementation uses multiple binary trees to speed up the search for the
 longest match.  All the programs in this article are written in
 draft-proposed ANSI C.  I tested them with Turbo C 2.0. 
 
-### References
-
 - [1] J. Ziv and A. Lempel, IEEE Trans. IT-23, 337-343 (1977).
 - [2] J. A. Storer and T. G. Szymanski, J. ACM, 29, 928-951 (1982).
 - [3] T. C. Bell, IEEE Trans. COM-34, 1176-1182 (1986).
@@ -162,49 +170,3 @@ draft-proposed ANSI C.  I tested them with Turbo C 2.0.
 ## License
 
 `LZHUF.C` is Copyrighted, the rest is Public Domain.
-
-# CHANGELOG
-
-## 2025-12-12
-
-- **Complete rewrite** of LZSS implementation in C23
-- Zero-copy memory-mapped I/O (`mmap`/`MapViewOfFile`)
-- Binary search tree matching (O(log N) average case)
-- Cross-platform build system with native Windows EXE output via `clang-cl` + `xwin`
-- Reduced codebase from 400+ lines to ~220 lines
-- Fixed critical bug: `tree_init` was using `memset` with `NIL & 0xFF` (=0) instead of proper 16-bit NIL initialization
-- Fixed pointer type mismatch in `insert()` function
-- Added real-time progress indicator during encoding
-- Preserved original 1989 Okumura parameters (N=4096, F=18, THRESHOLD=2) for 7th Guest compatibility
-- Removed legacy C++17 version and Visual Studio solution
-
-## 2024-12-08
-
-- `C23` version created, compiled with no warnings using `clang -std=c23 -Wall -O3 -g lzss.c -o lzss.exe`, but there are definitely issues to debug/troubleshoot. 
-- Documentation updates.
-
-## 2023-10-24
-
-- Visual Studio 2022 C++ Solution and refactored `lzss.cpp` using latest AI models was added! (legacy, DO NOT USE, included & archived for future analysis)
-
-## 2022-11-24
-
-- Used `lldb` to figure out why the new C++ version couldn't break out of the `for(;;)` loop in `InsertNode`. Turns out that the `r` value was one byte larger than the `C89` version in a side-by-side comparison.
-- Somehow, even using co-pilot it missed the `InitTree` call inside the `Encode` function. This was causing the `r` value to be off by one byte.
-- Documentation updates.
-
-## 2022-11-21
-
-- Added my own style of commenting and layout to the code
-- Added the `main` function / Entry Point to the code
-- Added a `helpText` function to display the help text to the command-line
-- Added the ASCII Art logo to the code
-- Added error checking in the `main` function for the input and output files for the Stand-alone solution.
-
-## 2022-11-18
-
-- Moved from `C89` to `C++17`
-- Changed `define` to `const` where applicable
-- Changed `FILE` to `fstream` where applicable
-- Changed most variable names to camelCase and full english words
-- Replaced the various `printf` calls with a mix of `std::cout`, `std::fixed`, and `std::precision` as needed.
