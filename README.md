@@ -163,9 +163,9 @@ implementation uses multiple binary trees to speed up the search for the
 longest match.  All the programs in this article are written in
 draft-proposed ANSI C.  I tested them with Turbo C 2.0. 
 
-- [1] J. Ziv and A. Lempel, IEEE Trans. IT-23, 337-343 (1977).
-- [2] J. A. Storer and T. G. Szymanski, J. ACM, 29, 928-951 (1982).
-- [3] T. C. Bell, IEEE Trans. COM-34, 1176-1182 (1986).
+- [1] J. Ziv and A. Lempel, [A Universal Algorithm for Sequential Data Compression](https://doi.org/10.1109/TIT.1977.1055714), IEEE Trans. IT-23, 337-343 (1977).
+- [2] J. A. Storer and T. G. Szymanski, [Data Compression via Textual Substitution](https://doi.org/10.1145/322344.322346), J. ACM, 29, 928-951 (1982).
+- [3] T. C. Bell, [Better OPM/L Text Compression](https://doi.org/10.1109/TCOM.1986.1096485), IEEE Trans. COM-34, 1176-1182 (1986).
 
 ## License
 
